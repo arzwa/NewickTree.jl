@@ -1,103 +1,109 @@
 module NewickTree
 
+import DataStructures: OrderedSet
+import AbstractTrees: children, print_tree, Tree
+export TreeNode, PhyloTree, isroot, isleaf, postwalk, prewalk, readnw
+export children, print_tree, tonw, extract
 
-using DataStructures
-export TreeNode, isroot, isleaf, postwalk, prewalk, readnw
+"""
+    TreeNode{I,T}
 
-# NOTE: we used OrderedSet as this allows deterministic iteration over
-# childnodes while allowing constant-time insertion and deletion
-
-mutable struct TreeNode{T}
-    i::Int64                        # index
-    x::T                            # can hold anything, typically a distance
-    p::Union{TreeNode{T},Nothing}   # parent node
-    c::OrderedSet{TreeNode{T}}      # child nodes
+A node of a (phylogenetic) tree. We used OrderedSet as this allows
+deterministic iteration over child nodes while allowing constant-time
+insertion and deletion.
+"""
+mutable struct TreeNode{I,T}
+    id      ::I                        # index
+    x       ::T                        # can hold anything, typically a distance
+    parent  ::Union{TreeNode{I,T},Nothing}
+    children::OrderedSet{TreeNode{I,T}}
 end
 
-const Clade{T} = OrderedSet{TreeNode{T}} where T
-newclade(T::Type) = Clade{T}()
-TreeNode(T::Type, i::Int64=1) = TreeNode{T}(i, zero(T), nothing, newclade(T))
-TreeNode(i::Int64, x::T) where T = TreeNode{T}(i, x, nothing, newclade(T))
-TreeNode(i::Int64, x::T, p::TreeNode{T}) where T = TreeNode{T}(i, x, p, newclade(T))
-isroot(n::TreeNode) = isnothing(n.p)
-isleaf(n::TreeNode) = length(n.c) == 0
+const Clade{I,T} = OrderedSet{TreeNode{I,T}} where {I,T}
+Clade(nodes::Vector{TreeNode}) = OrderedSet(nodes)
+newclade(n::TreeNode{I,T}) where {I,T} = Clade{I,T}()
+
+# root initializer
+TreeNode{I,T}() where {I,T} = TreeNode(one(I), zero(T), nothing, Clade{I,T}())
+TreeNode(i::I, x::T) where {I,T} = TreeNode(i, x, nothing, Clade{I,T}())
+
+isroot(n::TreeNode) = isnothing(n.parent)
+isleaf(n::TreeNode) = length(n.children) == 0
+
+"""
+    PhyloTree{I,T}
+
+A phylogenetic tree struct, combining nodes, leaf names and
+optionally an additional value for internal nodes such as bootstrap
+support values or posterior clade probabilities.
+"""
+struct PhyloTree{I,T}
+    nodes ::Vector{TreeNode{I,T}}
+    leaves::Dict{I,String}
+    values::Vector{T}
+end
+
+Base.show(io::IO, t::PhyloTree{I,T}) where {I,T} = write(io, "PhyloTree{$I,$T}")
+print_tree(t::PhyloTree) = print_tree(Tree(t.nodes[1]))
+print_tree(n::TreeNode) = print_tree(Tree(n))
 
 # Base extensions
-Base.getindex(t::TreeNode, i::Int64) = t.c[i]
-Base.length(t::TreeNode) = length(t.c)
-Base.show(io::IO, t::TreeNode{T}) where T = write(io, "TreeNode{$T}($(t.i); $(length(t)) children)")
-Base.delete!(t::TreeNode, x::TreeNode) = delete!(t.c, x)
-Base.push!(t::TreeNode, x::TreeNode) = push!(t.c, x)
-Base.first(t::TreeNode) = first(t.c)
+Base.getindex(t::PhyloTree, i) = t.nodes[i]
+Base.length(t::TreeNode) = length(t.children)
+Base.delete!(t::TreeNode, x::TreeNode) = delete!(t.children, x)
+Base.push!(t::TreeNode, x::TreeNode) = push!(t.children, x)
+Base.first(t::TreeNode) = first(t.children)
+Base.show(io::IO, t::TreeNode{I,T}) where {I,T} =
+    write(io, "TreeNode{$I,$T}($(t.id); $(length(t)) children)")
 
-# Recursive traversals
-function postwalk(t::TreeNode{T}) where T
-    ns = TreeNode{T}[]
-    function walk!(n)
-        if !isleaf(n)
-            for c in n.c
-                walk!(c)
-            end
-        end
-        push!(ns, n)
-    end
-    walk!(t)
-    ns
-end
-
-function prewalk(t::TreeNode{T}) where T
-    ns = TreeNode{T}[]
-    function walk!(n)
-        push!(ns, n)
-        if !isleaf(n)
-            for c in n.c
-                walk!(c)
-            end
-        end
-    end
-    walk!(t)
-    ns
-end
+children(n::TreeNode) = collect(n.children)
 
 # io
 """
-    readnw(nw_str::String)
+    readnw(nw_str::String [, index_type, value_type])
 
-Read a phylogenetic tree from a newick string.
+Read a phylogenetic tree from a newick string. Supports branch
+lengths and support-like values (for internal nodes). Example
+of a valid newick string:
+
+    str  = "((A:1.2,B:1.4)86:0.2,C:0.6);"
+    tree = readnw(str)
 """
-function readnw(nw_str::String)
-    l = Dict(); v = Dict()
-    stack = []; i = 1; x = 0.; sv = 0.; j=1
+function readnw(nw_str::String, I::Type=UInt16, T::Type=Float64)
+    l = Dict{I,String}(); v = Dict{I,T}()
+    stack = TreeNode{I,T}[]
+    i = I(1); x = T(0.); sv = T(0.); j=I(1)
     while i < length(nw_str)
         if nw_str[i] == '('  # add an internal node to stack & tree
-            push!(stack, TreeNode(Float64, j)); j += 1
+            push!(stack, TreeNode(j, T(0.))); j += I(1)
         elseif nw_str[i] == ')'  # add branch + collect data on node
             target = pop!(stack)
             source = stack[end]
-            target.p = source
+            target.parent = source
             target.x = x
-            push!(source.c, target)
+            push!(source.children, target)
             sv, x, i = get_node_info(nw_str, i+1)
-            v[source] = sv
+            v[source.id] = sv
         elseif nw_str[i] == ','  # add branch
             target = pop!(stack)
             source = stack[end]
-            target.p = source
+            target.parent = source
             target.x = x
-            v[target] = sv
-            push!(source.c, target)
+            v[target.id] = sv
+            push!(source.children, target)
         else  # store leaf name and get branch length
-            push!(stack, TreeNode(Float64, j)); j+=1
+            push!(stack, TreeNode(j, T(0.))); j += I(1)
             leaf, i = get_leaf_name(nw_str, i)
             sv, x, i = get_node_info(nw_str, i)
-            l[stack[end].i] = leaf
+            l[stack[end].id] = leaf
         end
-        i += 1
+        i += I(1)
     end
-    (t=stack[end], l=l, v=v)
+    # prewalk(stack[end])
+    PhyloTree(prewalk(stack[end]), l, collect(values(sort(v))))
 end
 
-function get_leaf_name(nw_str::String, i::Int64)
+function get_leaf_name(nw_str, i)
     j = i
     while (nw_str[j] != ':') & (nw_str[j] != ',') & (nw_str[j] != ')')
         j += 1
@@ -118,7 +124,7 @@ function get_node_info(nw_str, i)
     if occursin(":", substr)
         sv, bl = split(substr, ':')
         if sv == ""  # only branch length
-            sv = 0.0
+            sv = -1.0
             bl = parse(Float64, bl)
         else  # both (B)SV and branch length are there
             sv = parse(Float64, sv)
@@ -129,6 +135,85 @@ function get_node_info(nw_str, i)
         bl = sv = -1.
     end
     return sv, bl, i + length(substr) -1
+end
+
+# Recursive traversals
+function postwalk(t)
+    ns = typeof(t)[]
+    function walk!(n)
+        if !isleaf(n)
+            for c in n.children
+                walk!(c)
+            end
+        end
+        push!(ns, n)
+    end
+    walk!(t)
+    ns
+end
+
+function prewalk(t::TreeNode{I,T}) where {I,T}
+    ns = typeof(t)[]
+    function walk!(n)
+        push!(ns, n)
+        if !isleaf(n)
+            for c in n.children
+                walk!(c)
+            end
+        end
+    end
+    walk!(t)
+    ns
+end
+
+function extract(t::PhyloTree{I,T}, ℒ::Vector{String}) where {I,T}
+    new_leaves = Dict{I,String}()
+    function walk(n)
+        if isleaf(n)
+            new_leaves[n.id] = t.leaves[n.id]
+            return t.leaves[n.id] ∈ ℒ ? deepcopy(n) : nothing
+        else
+            below = TreeNode{I,T}[]
+            for c in n.children
+                m = walk(c)
+                isnothing(m) ? nothing : push!(below, m)
+            end
+            if length(below) == 0
+                return nothing
+            elseif length(below) == 1
+                below[1].x += n.x  # increment branch length
+                return below[1]
+            else
+                m = TreeNode(n.id, n.x, nothing, Clade(below))
+                for c in below
+                    c.parent = m
+                end
+                return m
+            end
+        end
+    end
+    nodes = prewalk(walk(t[1]))
+    nodes[1].x = 0.
+    PhyloTree(nodes, new_leaves, t.values)
+end
+
+Base.write(tree::PhyloTree) = write(stdout, tree)
+Base.write(io::IO, tree::PhyloTree) = write(io, tonw(tree))
+
+function tonw(tree)
+    function walk(n)
+        if isleaf(n)
+            return "$(tree.leaves[n.id]):$(n.x)"
+        else
+            nw_str = ""
+            for c in n.children
+                nw_str *= walk(c) * ","
+            end
+            return !isroot(n) ?
+                "($(nw_str[1:end-1])):$(n.x)" : "($(nw_str[1:end-1]))"
+        end
+    end
+    walk(tree.nodes[1]) * ";"
 end
 
 end # module
