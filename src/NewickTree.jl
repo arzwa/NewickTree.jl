@@ -5,6 +5,8 @@ import AbstractTrees: children, print_tree, Tree
 export TreeNode, PhyloTree, isroot, isleaf, postwalk, prewalk, readnw
 export children, print_tree, tonw, extract
 
+abstract type AbstractNode end
+
 """
     TreeNode{I,T}
 
@@ -12,7 +14,7 @@ A node of a (phylogenetic) tree. We used OrderedSet as this allows
 deterministic iteration over child nodes while allowing constant-time
 insertion and deletion.
 """
-mutable struct TreeNode{I,T}
+mutable struct TreeNode{I,T} <: AbstractNode
     id      ::I                        # index
     x       ::T                        # can hold anything, typically a distance
     parent  ::Union{TreeNode{I,T},Nothing}
@@ -27,8 +29,11 @@ newclade(n::TreeNode{I,T}) where {I,T} = Clade{I,T}()
 TreeNode{I,T}() where {I,T} = TreeNode(one(I), zero(T), nothing, Clade{I,T}())
 TreeNode(i::I, x::T) where {I,T} = TreeNode(i, x, nothing, Clade{I,T}())
 
+id(n::TreeNode) = n.id
 isroot(n::TreeNode) = isnothing(n.parent)
 isleaf(n::TreeNode) = length(n.children) == 0
+distance(n::TreeNode) = n.x
+Base.parent(n::TreeNode) = n.parent
 
 """
     PhyloTree{I,T}
@@ -57,6 +62,7 @@ Base.show(io::IO, t::TreeNode{I,T}) where {I,T} =
     write(io, "TreeNode{$I,$T}($(t.id); $(length(t)) children)")
 
 children(n::TreeNode) = collect(n.children)
+function leafname end
 
 # io
 """
@@ -184,7 +190,7 @@ function extract(t::PhyloTree{I,T}, ℒ::Vector{String}) where {I,T}
                 below[1].x += n.x  # increment branch length
                 return below[1]
             else
-                m = TreeNode(n.id, n.x, nothing, Clade(below))
+                m = TreeNode(n.id, n.x, nothing, OrderedSet(below))
                 for c in below
                     c.parent = m
                 end
@@ -200,20 +206,20 @@ end
 Base.write(tree::PhyloTree) = write(stdout, tree)
 Base.write(io::IO, tree::PhyloTree) = write(io, tonw(tree))
 
-function tonw(tree)
+tonw(tree::PhyloTree) = tonw(tree.nodes[1],
+    (n)->tree.leaves[n.id],
+    blen=(n)->n.x)
+
+function tonw(node, leafname; blen=(n)->1., label=(n)->"")
     function walk(n)
         if isleaf(n)
-            return "$(tree.leaves[n.id]):$(n.x)"
+            return "$(leafname(n)):$(blen(n))"
         else
-            nw_str = ""
-            for c in n.children
-                nw_str *= walk(c) * ","
-            end
-            return !isroot(n) ?
-                "($(nw_str[1:end-1])):$(n.x)" : "($(nw_str[1:end-1]))"
+            nwstr = join([walk(c) for c in children(n)], ",")
+            return !isroot(n) ? "($nwstr)$(label(n)):$(blen(n))" : "($(nwstr));"
         end
     end
-    walk(tree.nodes[1]) * ";"
+    walk(node)
 end
 
 end # module
