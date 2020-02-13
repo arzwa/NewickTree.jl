@@ -3,7 +3,7 @@ module NewickTree
 import DataStructures: OrderedSet
 import AbstractTrees: children, print_tree, Tree
 export TreeNode, PhyloTree, isroot, isleaf, postwalk, prewalk, readnw
-export children, print_tree, tonw, extract
+export children, print_tree, tonw, extract, id
 
 abstract type AbstractNode end
 
