@@ -28,6 +28,7 @@ newclade(n::TreeNode{I,T}) where {I,T} = Clade{I,T}()
 # root initializer
 TreeNode{I,T}() where {I,T} = TreeNode(one(I), zero(T), nothing, Clade{I,T}())
 TreeNode(i::I, x::T) where {I,T} = TreeNode(i, x, nothing, Clade{I,T}())
+TreeNode(i::I, x::T, p) where {I,T} = TreeNode(i, x, p, Clade{I,T}())
 
 id(n::TreeNode) = n.id
 isroot(n::TreeNode) = isnothing(n.parent)
