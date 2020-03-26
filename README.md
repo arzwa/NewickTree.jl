@@ -24,7 +24,11 @@ as node information. Failure to provide a valid Newick string will trigger
 an error:
 
 ```julia
-t = readnw("((A:1.2,B:1.4)86:0.2,C:0.6)")
+try
+    t = readnw("((A:1.2,B:1.4)86:0.2,C:0.6)")
+catch ex
+    @show ex
+end
 ```
 
 ## Support for writing other tree structured data to Newick strings
@@ -51,9 +55,19 @@ NewickTree.isleaf(x) = typeof(x) == Int ? true : false
 This enables us to use the `writenw` function
 
 ```julia
-writenw(stdout, t)
+io = IOBuffer()
+writenw(io, t)
+s = String(take!(io))
+```
+
+now we can read the Newick string
+
+```julia
+n = readnw(s)
+print_tree(n)
 ```
 
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+
