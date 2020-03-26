@@ -1,52 +1,59 @@
 # NewickTree.jl
 
-Read a newick tree to a tree data structure.
+Read a [newick tree](http://evolution.genetics.washington.edu/phylip/newicktree.html)
+to a tree data structure. The resulting data structure supports the
+[AbstractTrees.jl](https://github.com/JuliaCollections/AbstractTrees.jl)
+interface.
+
+## Reading trees
 
 ```julia
-julia> t = readnw("((A:1.2,B:1.4)86:0.2,C:0.6);")
-PhyloTree{UInt16,Float64}
-
-julia> t[1]
-TreeNode{UInt16,Float64}(1; 2 children)
-
-julia> print_tree(t)
-TreeNode{UInt16,Float64}(1; 2 children)
-├─ TreeNode{UInt16,Float64}(2; 2 children)
-│  ├─ TreeNode{UInt16,Float64}(3; 0 children)
-│  └─ TreeNode{UInt16,Float64}(4; 0 children)
-└─ TreeNode{UInt16,Float64}(5; 0 children)
-
-julia> for c in NewickTree.children(t[1])
-           print_tree(c)
-       end
-TreeNode{UInt16,Float64}(2; 2 children)
-├─ TreeNode{UInt16,Float64}(3; 0 children)
-└─ TreeNode{UInt16,Float64}(4; 0 children)
-
-TreeNode{UInt16,Float64}(5; 0 children)
-
-julia> for n in postwalk(t[1])
-           println(n)
-       end
-TreeNode{UInt16,Float64}(3; 0 children)
-TreeNode{UInt16,Float64}(4; 0 children)
-TreeNode{UInt16,Float64}(2; 2 children)
-TreeNode{UInt16,Float64}(5; 0 children)
-TreeNode{UInt16,Float64}(1; 2 children)
-
-julia> isleaf(t[5])
-true
-
-julia> tonw(t)
-"((A:1.2,B:1.4):0.2,C:0.6);"
-
-julia> write("fname.nw", t);
-
-julia> tt = extract(t, ["A","C"])
-PhyloTree{UInt16,Float64}
-
-julia> print_tree(tt)
-TreeNode{UInt16,Float64}(1; 2 children)
-├─ TreeNode{UInt16,Float64}(3; 0 children)
-└─ TreeNode{UInt16,Float64}(5; 0 children)
+using NewickTree
+t = readnw("((A:1.2,B:1.4)86:0.2,C:0.6);")
+print_tree(t)
+writenw(stdout, t)
 ```
+
+Use `readnw(readline("your_file.nw"))` to read a newick tree from a file. Use
+`readnw.(readlines("your_file.nw"))` to read a vector of trees from a file
+with a newick tree on each line.
+
+Note that trees should adhere to the Newick standard, they should end with a
+semicolon and can only contain leaf names, support values and branch lengths
+as node information. Failure to provide a valid Newick string will trigger
+an error:
+
+```julia
+t = readnw("((A:1.2,B:1.4)86:0.2,C:0.6)")
+```
+
+## Support for writing other tree structured data to Newick strings
+
+Any data structure that implements the AbstractTrees interface (i.e. defines
+`AbstractTrees.children`) can be written to a Newick structure provided several
+functions re defined. For example:
+
+```julia
+using AbstractTrees
+t = (((1,2),3),(4,5))
+print_tree(t)
+```
+
+The following functions should be defined
+
+```julia
+NewickTree.name(x::Int) = x
+NewickTree.support(x::Union{Int,Tuple}) = NaN
+NewickTree.distance(x::Union{Int,Tuple}) = NaN
+NewickTree.isleaf(x) = typeof(x) == Int ? true : false
+```
+
+This enables us to use the `writenw` function
+
+```julia
+writenw(stdout, t)
+```
+
+---
+
+*This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*

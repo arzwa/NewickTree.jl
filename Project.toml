@@ -1,8 +1,7 @@
 name = "NewickTree"
 uuid = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
 authors = ["arzwa <arzwa@psb.vib.ugent.be>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
-DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
