@@ -2,7 +2,7 @@ module NewickTree
 
 using AbstractTrees
 export Node, isroot, isleaf, postwalk, prewalk, children, print_tree, id, nwstr
-export readnw, writenw, distance
+export readnw, writenw, distance, name
 
 """
     Node{I,T}
@@ -51,6 +51,9 @@ function Base.push!(n::Node, m::Node)
     m.parent = n
 end
 
+Base.getindex(n::Node{I,T}, i::Integer) where {I,T} = n.children[i]
+Base.setindex!(n::Node{I,T}, x::T, i::Integer) where {I,T} = n.children[i] = x
+
 AbstractTrees.children(n::Node) = isdefined(n, :children) ? n.children : typeof(n)[]
 Base.eltype(::Type{<:TreeIterator{Node{I,T}}}) where {I,T} = Node{I,T}
 
@@ -95,7 +98,7 @@ the `distance` (expected number of substitutions, time, what have you),
 `support` (e.g. bootstrap support value, posterior clade probability)
 and `name` (leaf names). Note that internal node labels are not allowed.
 """
-struct NewickData{T,S}
+mutable struct NewickData{T,S}
     distance::T
     support ::T
     name    ::S
