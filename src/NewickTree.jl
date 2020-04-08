@@ -26,6 +26,30 @@ mutable struct Node{I,T}
     end
 end
 
+"""
+    NewickData{T,S<:AbstractString}
+
+A simple container for the alowed fields in a newick tree. Those are
+the `distance` (expected number of substitutions, time, what have you),
+`support` (e.g. bootstrap support value, posterior clade probability)
+and `name` (leaf names). Note that internal node labels are not allowed.
+"""
+mutable struct NewickData{T,S}
+    distance::T
+    support ::T
+    name    ::S
+end
+
+NewickData(; d=NaN, s=NaN, n="") = NewickData(promote(d, s)..., n)
+name(n::NewickData) = n.name
+support(n::NewickData) = n.support
+distance(n::NewickData) = n.distance
+
+Node(id, x::T) where T<:Real = Node(id, NewickData(d=x, s=NaN))
+Node(id, s::T) where T<:AbstractString = Node(id, NewickData(d=NaN, s=NaN, n=s))
+Node(id, x::T, s::V) where {T<:Real,V<:AbstractString} =
+    Node(id, NewickData(d=x, s=NaN, n=s))
+
 id(n::Node) = n.id
 data(n::Node) = n.data
 name(n::Node) = name(n.data)
@@ -109,25 +133,6 @@ function getpath(n::Node)
     end
     path
 end
-
-"""
-    NewickData{T,S<:AbstractString}
-
-A simple container for the alowed fields in a newick tree. Those are
-the `distance` (expected number of substitutions, time, what have you),
-`support` (e.g. bootstrap support value, posterior clade probability)
-and `name` (leaf names). Note that internal node labels are not allowed.
-"""
-mutable struct NewickData{T,S}
-    distance::T
-    support ::T
-    name    ::S
-end
-
-NewickData(d=NaN, s=NaN, n="") = NewickData(d, s, n)
-name(n::NewickData) = n.name
-support(n::NewickData) = n.support
-distance(n::NewickData) = n.distance
 
 """
     readnw(s::AbstractString, I::Type)
