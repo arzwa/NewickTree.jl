@@ -1,134 +1,249 @@
 module NewickTree
 
+using AbstractTrees
+export Node, isroot, isleaf, postwalk, prewalk, children, print_tree, id, nwstr
+export readnw, writenw, distance, name
 
-using DataStructures
-export TreeNode, isroot, isleaf, postwalk, prewalk, readnw
+"""
+    Node{I,T}
 
-# NOTE: we used OrderedSet as this allows deterministic iteration over
-# childnodes while allowing constant-time insertion and deletion
+A node of a (phylogenetic) tree.
+"""
+mutable struct Node{I,T}
+    id      ::I
+    data    ::T
+    parent  ::Node{I,T}
+    children::Vector{Node{I,T}}
 
-mutable struct TreeNode{T}
-    i::Int64                        # index
-    x::T                            # can hold anything, typically a distance
-    p::Union{TreeNode{T},Nothing}   # parent node
-    c::OrderedSet{TreeNode{T}}      # child nodes
+    Node(id::I, data::T) where {I,T} = new{I,T}(id, data)
+
+    function Node(id::I, data::T, p) where {I,T}
+        n = new{I,T}(id, data, p)
+        isdefined(p, :children) ?
+            push!(p.children, n) :
+            p.children = [n]
+        return n
+    end
 end
 
-const Clade{T} = OrderedSet{TreeNode{T}} where T
-newclade(T::Type) = Clade{T}()
-TreeNode(T::Type, i::Int64=1) = TreeNode{T}(i, zero(T), nothing, newclade(T))
-TreeNode(i::Int64, x::T) where T = TreeNode{T}(i, x, nothing, newclade(T))
-TreeNode(i::Int64, x::T, p::TreeNode{T}) where T = TreeNode{T}(i, x, p, newclade(T))
-isroot(n::TreeNode) = isnothing(n.p)
-isleaf(n::TreeNode) = length(n.c) == 0
+id(n::Node) = n.id
+data(n::Node) = n.data
+name(n::Node) = name(n.data)
+support(n::Node) = support(n.data)
+distance(n::Node) = distance(n.data)
+isroot(n::Node) = !isdefined(n, :parent)
+isleaf(n::Node) = !isdefined(n, :children)
+degree(n::Node) = isleaf(n) ? 0 : length(n.children)
 
-# Base extensions
-Base.getindex(t::TreeNode, i::Int64) = t.c[i]
-Base.length(t::TreeNode) = length(t.c)
-Base.show(io::IO, t::TreeNode{T}) where T = write(io, "TreeNode{$T}($(t.i); $(length(t)) children)")
-Base.delete!(t::TreeNode, x::TreeNode) = delete!(t.c, x)
-Base.push!(t::TreeNode, x::TreeNode) = push!(t.c, x)
-Base.first(t::TreeNode) = first(t.c)
+Base.parent(n::Node) = isdefined(n, :parent) ? n.parent : nothing
+Base.parent(root, n::Node) = isdefined(n, :parent) ? n.parent : nothing
+Base.eltype(::Type{Node{T}}) where T = Node{T}
+Base.first(n::Node) = first(children(n))
+Base.last(n::Node) = last(children(n))
+Base.length(n::Node) = length(n.children)
+function Base.delete!(n::Node{I}, i::I) where I
+    cs = children(n)
+    deleteat!(n, findfirst(c->id(c) == i, cs))
+end
+
+function Base.push!(n::Node, m::Node)
+    isdefined(n, :children) ? push!(n.children, m) : n.children = [m]
+    m.parent = n
+end
+
+Base.getindex(n::Node{I,T}, i::Integer) where {I,T} = n.children[i]
+Base.setindex!(n::Node{I,T}, x::T, i::Integer) where {I,T} = n.children[i] = x
+
+AbstractTrees.children(n::Node) = isdefined(n, :children) ? n.children : typeof(n)[]
+Base.eltype(::Type{<:TreeIterator{Node{I,T}}}) where {I,T} = Node{I,T}
+
+# AbstractTrees traits
+# Base.IteratorEltype(::Type{<:TreeIterator{Node{I,T}}}) where {I,T} = Base.HasEltype()
+# AbstractTrees.parentlinks(::Type{Node{I,T}}) where {I,T} = nothing #AbstractTrees.StoredParents()
+AbstractTrees.nodetype(::Type{Node{I,T}}) where {I,T} = Node{I,T}
+Base.show(io::IO, n::Node{I,T}) where {I,T} = write(io, "$(nwstr(n))")
 
 # Recursive traversals
-function postwalk(t::TreeNode{T}) where T
-    ns = TreeNode{T}[]
+"""
+    postwalk(n)
+"""
+function postwalk(t)
+    ns = typeof(t)[]
     function walk!(n)
-        if !isleaf(n)
-            for c in n.c
-                walk!(c)
-            end
-        end
+        !isleaf(n) && for c in n.children walk!(c) end
         push!(ns, n)
     end
     walk!(t)
     ns
 end
 
-function prewalk(t::TreeNode{T}) where T
-    ns = TreeNode{T}[]
+"""
+    prewalk(n)
+"""
+function prewalk(t)
+    ns = typeof(t)[]
     function walk!(n)
         push!(ns, n)
-        if !isleaf(n)
-            for c in n.c
-                walk!(c)
-            end
-        end
+        !isleaf(n) && for c in n.children walk!(c) end
     end
     walk!(t)
     ns
 end
 
-# io
-"""
-    readnw(nw_str::String)
-
-Read a phylogenetic tree from a newick string.
-"""
-function readnw(nw_str::String)
-    l = Dict(); v = Dict()
-    stack = []; i = 1; x = 0.; sv = 0.; j=1
-    while i < length(nw_str)
-        if nw_str[i] == '('  # add an internal node to stack & tree
-            push!(stack, TreeNode(Float64, j)); j += 1
-        elseif nw_str[i] == ')'  # add branch + collect data on node
-            target = pop!(stack)
-            source = stack[end]
-            target.p = source
-            target.x = x
-            push!(source.c, target)
-            sv, x, i = get_node_info(nw_str, i+1)
-            v[source] = sv
-        elseif nw_str[i] == ','  # add branch
-            target = pop!(stack)
-            source = stack[end]
-            target.p = source
-            target.x = x
-            v[target] = sv
-            push!(source.c, target)
-        else  # store leaf name and get branch length
-            push!(stack, TreeNode(Float64, j)); j+=1
-            leaf, i = get_leaf_name(nw_str, i)
-            sv, x, i = get_node_info(nw_str, i)
-            l[stack[end].i] = leaf
-        end
-        i += 1
-    end
-    (t=stack[end], l=l, v=v)
+# Path connecting two nodes
+function getpath(n::Node, m::Node)
+    p1 = getpath(n)
+    p2 = getpath(m)
+    mrca = intersect(p1, p2)[1]
+    i1 = findfirst(x->x==mrca, p1)
+    i2 = findfirst(x->x==mrca, p2)
+    p1[1:i1], p2[1:i2]
 end
 
-function get_leaf_name(nw_str::String, i::Int64)
-    j = i
-    while (nw_str[j] != ':') & (nw_str[j] != ',') & (nw_str[j] != ')')
-        j += 1
+# path connecting node to the root
+function getpath(n::Node)
+    path = typeof(n)[]
+    while !isnothing(n)
+        push!(path, n)
+        n = parent(n)
     end
-    leaf = nw_str[i:j-1]
-    return leaf, j
+    path
 end
 
-function get_node_info(nw_str, i)
-    # get everything up to the next comma or semicolon
-    substr = nw_str[i:end]
-    substr = split(substr, ',')[1]
-    substr = split(substr, ')')[1]
-    if substr == ";"
-        return -1.0, -1.0, i
+"""
+    NewickData{T,S<:AbstractString}
+
+A simple container for the alowed fields in a newick tree. Those are
+the `distance` (expected number of substitutions, time, what have you),
+`support` (e.g. bootstrap support value, posterior clade probability)
+and `name` (leaf names). Note that internal node labels are not allowed.
+"""
+mutable struct NewickData{T,S}
+    distance::T
+    support ::T
+    name    ::S
+end
+
+NewickData(d=NaN, s=NaN, n="") = NewickData(d, s, n)
+name(n::NewickData) = n.name
+support(n::NewickData) = n.support
+distance(n::NewickData) = n.distance
+
+"""
+    readnw(s::AbstractString, I::Type)
+
+Read a newick string to a tree. Supports the original Newick standard
+(http://evolution.genetics.washington.edu/phylip/newicktree.html). One can
+have either support values for internal nodes or a node label, but not both.
+"""
+readnw(s::AbstractString, I::Type=UInt16) = try
+        readnw(IOBuffer(s), I)
+    catch EOFError
+        throw("Malformed Newick string '$s'")
     end
-    substr = split(substr, ';')[1]
-    if occursin(":", substr)
-        sv, bl = split(substr, ':')
-        if sv == ""  # only branch length
-            sv = 0.0
-            bl = parse(Float64, bl)
-        else  # both (B)SV and branch length are there
-            sv = parse(Float64, sv)
-            bl = parse(Float64, bl)
+
+"""
+    nwstr(n::Node{I,N})
+
+Generate a newick tree string for the tree rooted in `n`. To make this
+work, `N` (the type of `n.data`) should implement `name()`, `distance()`
+and `support()` functions. See for instance the `NewickData` type.
+"""
+function nwstr(n)
+    if isleaf(n)
+        d = isnan(distance(n)) ? "" : ":$(distance(n))"
+        return "$(name(n))$d"
+    end
+    function walk(n)
+        d = isnan(distance(n)) ? "" : ":$(distance(n))"
+        isleaf(n) && return "$(name(n))$d"
+        s = join([walk(c) for c in children(n)], ",")
+        sv = isnan(support(n)) ? "" : support(n)
+        return "($s)$sv$d"
+    end
+    s = walk(n)
+    s[1:findlast(')', s)]*";"
+end
+
+"""
+    writenw(io::IO, n)
+    writenw(fname::AbstractString, n)
+
+Write a newick representation of the tree rooted in `n`. Note that
+the tree data type should allow `nwstr(n)` to work. See the `nwstr`
+docstring.
+"""
+writenw(io::IO, n) = write(io, nwstr(n))
+writenw(fname::AbstractString, n) = write(fname, nwstr(n))
+
+function readnw(io::IOBuffer, I::Type=UInt16)
+    i = I(1)
+    c = read(io, Char)
+    stack = []
+    currdata = NewickData()
+    while c != ';'
+        if c == '('
+            push!(stack, Node(i, NewickData())); i += one(i)
+            c = read(io, Char)
+        elseif c == ')' || c == ','
+            target = pop!(stack)
+            source = last(stack)
+            push!(source, target)
+            target.data = currdata
+            if c == ')'
+                c = read(io, Char)
+                eof(io) ? (break) : (currdata, c) = get_nodedata(io, c)
+            else
+                c = read(io, Char)
+            end
+        else
+            push!(stack, Node(i, NewickData())); i += one(i)
+            leafname, c = get_leafname(io, c)
+            currdata, c = get_nodedata(io, c, leafname)
         end
-    else
-        # nothing there
-        bl = sv = -1.
     end
-    return sv, bl, i + length(substr) -1
+    last(stack)
+end
+
+function get_leafname(io::IOBuffer, c)
+    leafname = ""
+    while !_isnwdelim(c)
+        leafname *= c
+        c = read(io, Char)
+    end
+    leafname, c
+end
+
+function get_nodedata(io::IOBuffer, c, name="")
+    # get everything up to the next comma or )
+    support, c = _readwhile!(io, c)
+    distance = ""
+    if c == ':'
+        c = read(io, Char)
+        distance, c = _readwhile!(io, c)
+    end
+    sv = nanparse(support)
+    if typeof(sv) == String
+        name = sv
+        sv = NaN
+    end
+    NewickData(nanparse(distance), sv, name), c
+end
+
+function _readwhile!(io::IOBuffer, c)
+    out = ""
+    while !_isnwdelim(c)
+        out *= c
+        c = read(io, Char)
+    end
+    out, c
+end
+
+_isnwdelim(c::Char) = c == ',' || c == ')' || c == ':'
+
+function nanparse(x)
+    y = tryparse(Float64, x)
+    isnothing(y) ? (x == "" ? NaN : x) : parse(Float64, x)
 end
 
 end # module
