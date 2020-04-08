@@ -35,7 +35,7 @@ isroot(n::Node) = !isdefined(n, :parent)
 isleaf(n::Node) = !isdefined(n, :children)
 degree(n::Node) = isleaf(n) ? 0 : length(n.children)
 
-Base.parent(n::Node) = n.parent
+Base.parent(n::Node) = isdefined(n, :parent) ? n.parent : nothing
 Base.parent(root, n::Node) = isdefined(n, :parent) ? n.parent : nothing
 Base.eltype(::Type{Node{T}}) where T = Node{T}
 Base.first(n::Node) = first(children(n))
@@ -61,7 +61,7 @@ Base.eltype(::Type{<:TreeIterator{Node{I,T}}}) where {I,T} = Node{I,T}
 # Base.IteratorEltype(::Type{<:TreeIterator{Node{I,T}}}) where {I,T} = Base.HasEltype()
 # AbstractTrees.parentlinks(::Type{Node{I,T}}) where {I,T} = nothing #AbstractTrees.StoredParents()
 AbstractTrees.nodetype(::Type{Node{I,T}}) where {I,T} = Node{I,T}
-Base.show(io::IO, n::Node{I,T}) where {I,T} = write(io, "Node($(id(n)), $(data(n)))")
+Base.show(io::IO, n::Node{I,T}) where {I,T} = write(io, "$(nwstr(n))")
 
 # Recursive traversals
 """
@@ -90,6 +90,26 @@ function prewalk(t)
     ns
 end
 
+# Path connecting two nodes
+function getpath(n::Node, m::Node)
+    p1 = getpath(n)
+    p2 = getpath(m)
+    mrca = intersect(p1, p2)[1]
+    i1 = findfirst(x->x==mrca, p1)
+    i2 = findfirst(x->x==mrca, p2)
+    p1[1:i1], p2[1:i2]
+end
+
+# path connecting node to the root
+function getpath(n::Node)
+    path = typeof(n)[]
+    while !isnothing(n)
+        push!(path, n)
+        n = parent(n)
+    end
+    path
+end
+
 """
     NewickData{T,S<:AbstractString}
 
@@ -112,7 +132,9 @@ distance(n::NewickData) = n.distance
 """
     readnw(s::AbstractString, I::Type)
 
-Read a newick string to a tree.
+Read a newick string to a tree. Supports the original Newick standard
+(http://evolution.genetics.washington.edu/phylip/newicktree.html). One can
+have either support values for internal nodes or a node label, but not both.
 """
 readnw(s::AbstractString, I::Type=UInt16) = try
         readnw(IOBuffer(s), I)
@@ -128,6 +150,10 @@ work, `N` (the type of `n.data`) should implement `name()`, `distance()`
 and `support()` functions. See for instance the `NewickData` type.
 """
 function nwstr(n)
+    if isleaf(n)
+        d = isnan(distance(n)) ? "" : ":$(distance(n))"
+        return "$(name(n))$d"
+    end
     function walk(n)
         d = isnan(distance(n)) ? "" : ":$(distance(n))"
         isleaf(n) && return "$(name(n))$d"
@@ -196,7 +222,12 @@ function get_nodedata(io::IOBuffer, c, name="")
         c = read(io, Char)
         distance, c = _readwhile!(io, c)
     end
-    NewickData(nanparse(distance), nanparse(support), name), c
+    sv = nanparse(support)
+    if typeof(sv) == String
+        name = sv
+        sv = NaN
+    end
+    NewickData(nanparse(distance), sv, name), c
 end
 
 function _readwhile!(io::IOBuffer, c)
@@ -212,7 +243,7 @@ _isnwdelim(c::Char) = c == ',' || c == ')' || c == ':'
 
 function nanparse(x)
     y = tryparse(Float64, x)
-    isnothing(y) ? NaN : parse(Float64, x)
+    isnothing(y) ? (x == "" ? NaN : x) : parse(Float64, x)
 end
 
 end # module
