@@ -24,6 +24,22 @@ catch ex
     @show ex
 end
 
+# The tree data structure is pretty straightforward, with nodes storing the following fields:
+fieldnames(typeof(t))
+
+# Functions from `AbstractTrees` can be used, for instance
+using AbstractTrees
+collect(Leaves(t))
+
+# or
+collect(PostOrderDFS(t))
+
+# some simple recursive tree traversals are also implemented
+postwalk(t)
+prewalk(t)
+
+# these tend to be faster (at least for small trees?)
+
 # ## Writing trees
 
 # `nwstr` converts a tree data structure that implements the required functions (see below) to a Newick string:

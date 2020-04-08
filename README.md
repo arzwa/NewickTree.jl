@@ -33,6 +33,59 @@ end
 "Malformed Newick string '((A:1.2,B:1.4)86:0.2,C:0.6)'"
 ```
 
+The tree data structure is pretty straightforward, with nodes storing the following fields:
+
+```julia
+fieldnames(typeof(t))
+```
+```
+(:id, :data, :parent, :children)
+```
+
+Functions from `AbstractTrees` can be used, for instance
+
+```julia
+using AbstractTrees
+collect(Leaves(t))
+```
+```
+3-element Array{Node{UInt16,NewickTree.NewickData{Float64,String}},1}:
+ A:1.2
+ B:1.4
+ C:0.6
+```
+
+or
+
+```julia
+collect(PostOrderDFS(t))
+```
+```
+5-element Array{Node{UInt16,NewickTree.NewickData{Float64,String}},1}:
+ A:1.2
+ B:1.4
+ (A:1.2,B:1.4);
+ C:0.6
+ ((A:1.2,B:1.4)86.0:1.4,C:0.6);
+```
+
+some simple recursive tree traversals are also implemented
+
+```julia
+postwalk(t)
+prewalk(t)
+```
+```
+5-element Array{Node{UInt16,NewickTree.NewickData{Float64,String}},1}:
+ ((A:1.2,B:1.4)86.0:1.4,C:0.6);
+ (A:1.2,B:1.4);
+ A:1.2
+ B:1.4
+ C:0.6
+```
+
+these tend to be faster (at least for small trees?)
+
 ## Writing trees
 
 `nwstr` converts a tree data structure that implements the required functions (see below) to a Newick string:
