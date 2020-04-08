@@ -64,9 +64,9 @@ collect(PostOrderDFS(t))
 5-element Array{Node{UInt16,NewickTree.NewickData{Float64,String}},1}:
  A:1.2
  B:1.4
- (A:1.2,B:1.4);
+ (A:1.2,B:1.4)86.0:0.2;
  C:0.6
- ((A:1.2,B:1.4)86.0:1.4,C:0.6);
+ ((A:1.2,B:1.4)86.0:0.2,C:0.6);
 ```
 
 some simple recursive tree traversals are also implemented
@@ -77,8 +77,8 @@ prewalk(t)
 ```
 ```
 5-element Array{Node{UInt16,NewickTree.NewickData{Float64,String}},1}:
- ((A:1.2,B:1.4)86.0:1.4,C:0.6);
- (A:1.2,B:1.4);
+ ((A:1.2,B:1.4)86.0:0.2,C:0.6);
+ (A:1.2,B:1.4)86.0:0.2;
  A:1.2
  B:1.4
  C:0.6
@@ -94,7 +94,7 @@ these tend to be faster (at least for small trees?)
 nwstr(t)
 ```
 ```
-"((A:1.2,B:1.4)86.0:1.4,C:0.6);"
+"((A:1.2,B:1.4)86.0:0.2,C:0.6);"
 ```
 
 `writenw` uses this to write to a stream or file.
@@ -105,7 +105,7 @@ writenw(io, t)
 String(take!(io))
 ```
 ```
-"((A:1.2,B:1.4)86.0:1.4,C:0.6);"
+"((A:1.2,B:1.4)86.0:0.2,C:0.6);"
 ```
 
 ## Support for writing other tree structured data to Newick strings
@@ -133,7 +133,8 @@ print_tree(t)
 The following functions should be defined
 
 ```julia
-NewickTree.name(x::Int) = x
+NewickTree.name(x::Tuple) = ""
+NewickTree.name(x::Int) = string(x)
 NewickTree.support(x::Union{Int,Tuple}) = NaN
 NewickTree.distance(x::Union{Int,Tuple}) = NaN
 NewickTree.isleaf(x) = typeof(x) == Int ? true : false

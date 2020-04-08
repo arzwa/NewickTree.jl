@@ -159,10 +159,12 @@ function nwstr(n)
         isleaf(n) && return "$(name(n))$d"
         s = join([walk(c) for c in children(n)], ",")
         sv = isnan(support(n)) ? "" : support(n)
+        sv = sv == "" ? name(n) : sv
+        d = isnan(distance(n)) ? "" : ":$(distance(n))"
         return "($s)$sv$d"
     end
     s = walk(n)
-    s[1:findlast(')', s)]*";"
+    s*";"
 end
 
 """
