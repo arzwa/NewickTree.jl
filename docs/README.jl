@@ -24,7 +24,7 @@ catch ex
     @show ex
 end
 
-## Writing trees
+# ## Writing trees
 
 # `nwstr` converts a tree data structure that implements the required functions (see below) to a Newick string:
 

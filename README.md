@@ -28,12 +28,12 @@ try
 catch ex
     @show ex
 end
-
-# Writing trees
 ```
 ```
 "Malformed Newick string '((A:1.2,B:1.4)86:0.2,C:0.6)'"
 ```
+
+## Writing trees
 
 `nwstr` converts a tree data structure that implements the required functions (see below) to a Newick string:
 
@@ -117,3 +117,4 @@ print_tree(n)
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+
