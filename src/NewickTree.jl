@@ -1,8 +1,9 @@
 module NewickTree
 
 using AbstractTrees
-export Node, isroot, isleaf, postwalk, prewalk, children, print_tree, id, nwstr
-export readnw, writenw, distance, name
+export Node, NewickData
+export isroot, isleaf, postwalk, prewalk, children, print_tree
+export readnw, writenw, distance, name, id, nwstr
 
 """
     Node{I,T}
@@ -44,17 +45,17 @@ NewickData(; d=NaN, s=NaN, n="") = NewickData(promote(d, s)..., n)
 name(n::NewickData) = n.name
 support(n::NewickData) = n.support
 distance(n::NewickData) = n.distance
+setname!(n::NewickData, s) = n.name = string(s)
+setdistance!(n::NewickData, x) = n.distance = x
+setsupport!(n::NewickData, x) = n.support = x
 
-Node(id, x::T) where T<:Real = Node(id, NewickData(d=x, s=NaN))
-Node(id, s::T) where T<:AbstractString = Node(id, NewickData(d=NaN, s=NaN, n=s))
-Node(id, x::T, s::V) where {T<:Real,V<:AbstractString} =
-    Node(id, NewickData(d=x, s=NaN, n=s))
-
+Node(i; kwargs...) = Node(i, NewickData(; kwargs...))
 id(n::Node) = n.id
 data(n::Node) = n.data
 name(n::Node) = name(n.data)
 support(n::Node) = support(n.data)
-distance(n::Node) = distance(n.data)
+distance(n::Node{I,T}) where {I,T} =
+    hasmethod(distance, Tuple{T}) ? distance(n.data) : NaN
 isroot(n::Node) = !isdefined(n, :parent)
 isleaf(n::Node) = !isdefined(n, :children)
 degree(n::Node) = isleaf(n) ? 0 : length(n.children)
@@ -65,27 +66,31 @@ Base.eltype(::Type{Node{T}}) where T = Node{T}
 Base.first(n::Node) = first(children(n))
 Base.last(n::Node) = last(children(n))
 Base.length(n::Node) = length(n.children)
-function Base.delete!(n::Node{I}, i::I) where I
-    cs = children(n)
-    deleteat!(n, findfirst(c->id(c) == i, cs))
-end
+
+Base.delete!(n::Node{I}, i::I) where I =
+    deleteat!(n.children, findfirst(c->id(c) == i, children(n)))
+Base.delete!(n::Node, m::Node) =
+    deleteat!(n.children, findfirst(c->c == m, children(n)))
 
 function Base.push!(n::Node, m::Node)
-    isdefined(n, :children) ? push!(n.children, m) : n.children = [m]
+    isdefined(n, :children) ?
+        push!(n.children, m) : n.children = [m]
     m.parent = n
 end
 
 Base.getindex(n::Node{I,T}, i::Integer) where {I,T} = n.children[i]
 Base.setindex!(n::Node{I,T}, x::T, i::Integer) where {I,T} = n.children[i] = x
 
-AbstractTrees.children(n::Node) = isdefined(n, :children) ? n.children : typeof(n)[]
+AbstractTrees.children(n::Node) = isdefined(n, :children) ?
+    n.children : typeof(n)[]
 Base.eltype(::Type{<:TreeIterator{Node{I,T}}}) where {I,T} = Node{I,T}
 
 # AbstractTrees traits
 # Base.IteratorEltype(::Type{<:TreeIterator{Node{I,T}}}) where {I,T} = Base.HasEltype()
 # AbstractTrees.parentlinks(::Type{Node{I,T}}) where {I,T} = nothing #AbstractTrees.StoredParents()
 AbstractTrees.nodetype(::Type{Node{I,T}}) where {I,T} = Node{I,T}
-Base.show(io::IO, n::Node{I,T}) where {I,T} = write(io, "$(nwstr(n))")
+Base.show(io::IO, n::Node{I,<:NewickData}) where I = write(io, "$(nwstr(n))")
+Base.show(io::IO, n::Node) = write(io,"Node($(id(n)), $(n.data))")
 
 # Recursive traversals
 """
@@ -144,33 +149,37 @@ have either support values for internal nodes or a node label, but not both.
 readnw(s::AbstractString, I::Type=UInt16) = try
         readnw(IOBuffer(s), I)
     catch EOFError
-        throw("Malformed Newick string '$s'")
+        more = s[end] != ";" ? "(no trailing semicolon?)" : ""
+        more = !ispath(s) ? more : "(path-like arg instead of Newick string?)"
+        throw("Malformed Newick string '$s' $more")
     end
 
 """
     nwstr(n::Node{I,N})
 
 Generate a newick tree string for the tree rooted in `n`. To make this
-work, `N` (the type of `n.data`) should implement `name()`, `distance()`
-and `support()` functions. See for instance the `NewickData` type.
+work, `N` (the type of `n.data`) should implement `name()` and `distance()`
+methods, and optionally `support()`. If `support` is implemented for the
+data type and it is not NaN, it will supersede `name` for the labeling of
+internal nodes. See for instance the `NewickData` type.
 """
 function nwstr(n)
-    if isleaf(n)
-        d = isnan(distance(n)) ? "" : ":$(distance(n))"
-        return "$(name(n))$d"
-    end
     function walk(n)
-        d = isnan(distance(n)) ? "" : ":$(distance(n))"
+        d = stringify(':', distance(n))
         isleaf(n) && return "$(name(n))$d"
         s = join([walk(c) for c in children(n)], ",")
-        sv = isnan(support(n)) ? "" : support(n)
+        sv = hasmethod(support, Tuple{typeof(n.data)}) ?
+            stringify(support(n)) : ""
         sv = sv == "" ? name(n) : sv
-        d = isnan(distance(n)) ? "" : ":$(distance(n))"
+        d = stringify(':', distance(n))
         return "($s)$sv$d"
     end
     s = walk(n)
     s*";"
 end
+
+stringify(x) = isnan(x) ? "" : string(x)
+stringify(x, y) = isnan(y) ? "" : string(x, y)
 
 """
     writenw(io::IO, n)
@@ -199,10 +208,13 @@ function readnw(io::IOBuffer, I::Type=UInt16)
             target.data = currdata
             if c == ')'
                 c = read(io, Char)
-                eof(io) ? (break) : (currdata, c) = get_nodedata(io, c)
+                eof(io) || c == ';' ? (break) :
+                    (currdata, c) = get_nodedata(io, c)
             else
                 c = read(io, Char)
             end
+        elseif isspace(c)
+            c = read(io, Char)
         else
             push!(stack, Node(i, NewickData())); i += one(i)
             leafname, c = get_leafname(io, c)
@@ -218,7 +230,7 @@ function get_leafname(io::IOBuffer, c)
         leafname *= c
         c = read(io, Char)
     end
-    leafname, c
+    String(strip(leafname)), c
 end
 
 function get_nodedata(io::IOBuffer, c, name="")
@@ -231,7 +243,7 @@ function get_nodedata(io::IOBuffer, c, name="")
     end
     sv = nanparse(support)
     if typeof(sv) == String
-        name = sv
+        name = String(strip(sv))
         sv = NaN
     end
     NewickData(nanparse(distance), sv, name), c
@@ -246,7 +258,7 @@ function _readwhile!(io::IOBuffer, c)
     out, c
 end
 
-_isnwdelim(c::Char) = c == ',' || c == ')' || c == ':'
+_isnwdelim(c::Char) = c == ',' || c == ')' || c == ':' || c == ';'
 
 function nanparse(x)
     y = tryparse(Float64, x)

@@ -168,6 +168,19 @@ print_tree(n)
    └─ 5
 ```
 
+```julia
+using Literate
+Literate.markdown(
+    joinpath(@__DIR__, "README.jl"),
+    joinpath(@__DIR__, "../"),
+    documenter=false, execute=true)
+```
+```
+LoadError("string", 2, ArgumentError("cannot find inputfile `/home/arzwa/dev/NewickTree/README.jl`"))
+```
+
+using the execute-markdown branch now
+
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
