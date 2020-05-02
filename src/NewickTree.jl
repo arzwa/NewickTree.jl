@@ -312,8 +312,10 @@ end
 function getlca(n::Node, a::String, b::String)
     clade = getleaves(n)
     m = clade[findfirst(x->name(x)==a, clade)]
-    while !(b ∈ name.(getleaves(m))) m = parent(m) end
-    return n
+    while !(b ∈ name.(getleaves(m)))
+        m = parent(m)
+    end
+    return m
 end
 
 function getleaves(n::N) where N<:Node  # mostly faster than Leaves...
