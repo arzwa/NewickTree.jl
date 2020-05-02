@@ -20,9 +20,7 @@ mutable struct Node{I,T}
 
     function Node(id::I, data::T, p) where {I,T}
         n = new{I,T}(id, data, p)
-        isdefined(p, :children) ?
-            push!(p.children, n) :
-            p.children = [n]
+        push!(p, n)
         return n
     end
 end
@@ -263,6 +261,67 @@ _isnwdelim(c::Char) = c == ',' || c == ')' || c == ':' || c == ';'
 function nanparse(x)
     y = tryparse(Float64, x)
     isnothing(y) ? (x == "" ? NaN : x) : parse(Float64, x)
+end
+
+# Some extra utilities here:
+"""
+    extract(n::Node, l::AbstractVector{String})
+
+Extract the tree with leaves in `l` from a given tree, preserving
+distances if relevant.
+"""
+function extract(n::Node{I,T}, l::AbstractVector) where {I,T}
+    function walk(n)
+        if isleaf(n)
+            return name(n) ∈ l ? deepcopy(n) : nothing
+        else
+            below = Node{I,T}[]
+            for c in children(n)
+                m = walk(c)
+                !isnothing(m) && push!(below, m)
+            end
+            if length(below) == 0
+                return nothing
+            elseif length(below) == 1
+                setdistance!(below[1].data,
+                    distance(below[1]) + distance(n))
+                return below[1]
+            else
+                m = deepcopy(n)
+                m.children = below
+                for c in below c.parent = m end
+                return m
+            end
+        end
+    end
+    walk(n)
+end
+
+function insertnode!(n::Node{I,T}, m::Node{I,T}) where {I,T}
+    a = parent(n)
+    delete!(a, n); push!(a, m); push!(m, n)
+    setdistance!(n.data, distance(n) - distance(m))
+end
+
+function insertnode!(n::Node{I,<:NewickData}; dist=NaN, name="") where I
+    i = maximum(id.(postwalk(n))) + 1
+    dist = isnan(dist) ? distance(n) / 2 : dist
+    insertnode!(n, Node(I(i), NewickData(d=dist, n=name)))
+end
+
+function getlca(n::Node, a::String, b::String)
+    clade = getleaves(n)
+    m = clade[findfirst(x->name(x)==a, clade)]
+    while !(b ∈ name.(getleaves(m))) m = parent(m) end
+    return n
+end
+
+function getleaves(n::N) where N<:Node  # mostly faster than Leaves...
+    xs = N[]
+    for node in postwalk(n)
+        isleaf(node) && push!(xs, node)
+    end
+    xs
 end
 
 end # module
