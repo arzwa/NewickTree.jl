@@ -2,8 +2,9 @@ module NewickTree
 
 using AbstractTrees
 export Node, NewickData
-export isroot, isleaf, postwalk, prewalk, children, print_tree
-export readnw, writenw, distance, name, id, nwstr
+export isroot, isleaf, postwalk, prewalk, children, getroot, getlca, getleaves
+export insertnode!, print_tree, readnw, writenw
+export distance, name, id, nwstr
 
 """
     Node{I,T}
@@ -89,6 +90,11 @@ Base.eltype(::Type{<:TreeIterator{Node{I,T}}}) where {I,T} = Node{I,T}
 AbstractTrees.nodetype(::Type{Node{I,T}}) where {I,T} = Node{I,T}
 Base.show(io::IO, n::Node{I,<:NewickData}) where I = write(io, "$(nwstr(n))")
 Base.show(io::IO, n::Node) = write(io,"Node($(id(n)), $(n.data))")
+
+function getroot(n::Node)
+    while !isroot(n) n = parent(n) end
+    return n
+end
 
 # Recursive traversals
 """
@@ -304,7 +310,7 @@ function insertnode!(n::Node{I,T}, m::Node{I,T}) where {I,T}
 end
 
 function insertnode!(n::Node{I,<:NewickData}; dist=NaN, name="") where I
-    i = maximum(id.(postwalk(n))) + 1
+    i = maximum(id.(postwalk(getroot(n)))) + 1
     dist = isnan(dist) ? distance(n) / 2 : dist
     insertnode!(n, Node(I(i), NewickData(d=dist, n=name)))
 end
