@@ -1,6 +1,7 @@
 module NewickTree
 
 using AbstractTrees
+
 export Node, NewickData
 export isroot, isleaf, postwalk, prewalk, children, getroot, getlca, getleaves
 export insertnode!, print_tree, readnw, writenw
@@ -172,7 +173,7 @@ function nwstr(n)
         d = stringify(':', distance(n))
         isleaf(n) && return "$(name(n))$d"
         s = join([walk(c) for c in children(n)], ",")
-        sv = hasmethod(support, Tuple{typeof(n.data)}) ?
+        sv = hasmethod(support, Tuple{typeof(n)}) ?
             stringify(support(n)) : ""
         sv = sv == "" ? name(n) : sv
         d = stringify(':', distance(n))

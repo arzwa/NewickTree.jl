@@ -73,7 +73,6 @@ print_tree(t)
 # The following functions should be defined
 NewickTree.name(x::Tuple) = ""
 NewickTree.name(x::Int) = string(x)
-NewickTree.support(x::Union{Int,Tuple}) = NaN
 NewickTree.distance(x::Union{Int,Tuple}) = NaN
 NewickTree.isleaf(x) = typeof(x) == Int ? true : false
 

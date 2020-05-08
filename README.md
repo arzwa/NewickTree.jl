@@ -30,7 +30,7 @@ catch ex
 end
 ```
 ```
-"Malformed Newick string '((A:1.2,B:1.4)86:0.2,C:0.6)'"
+"Malformed Newick string '((A:1.2,B:1.4)86:0.2,C:0.6)' (no trailing semicolon?)"
 ```
 
 The tree data structure is pretty straightforward, with nodes storing the following fields:
@@ -49,10 +49,10 @@ using AbstractTrees
 collect(Leaves(t))
 ```
 ```
-3-element Array{Node{UInt16,NewickTree.NewickData{Float64,String}},1}:
- A:1.2
- B:1.4
- C:0.6
+3-element Array{Node{UInt16,NewickData{Float64,String}},1}:
+ A:1.2;
+ B:1.4;
+ C:0.6;
 ```
 
 or
@@ -61,11 +61,11 @@ or
 collect(PostOrderDFS(t))
 ```
 ```
-5-element Array{Node{UInt16,NewickTree.NewickData{Float64,String}},1}:
- A:1.2
- B:1.4
+5-element Array{Node{UInt16,NewickData{Float64,String}},1}:
+ A:1.2;
+ B:1.4;
  (A:1.2,B:1.4)86.0:0.2;
- C:0.6
+ C:0.6;
  ((A:1.2,B:1.4)86.0:0.2,C:0.6);
 ```
 
@@ -76,12 +76,12 @@ postwalk(t)
 prewalk(t)
 ```
 ```
-5-element Array{Node{UInt16,NewickTree.NewickData{Float64,String}},1}:
+5-element Array{Node{UInt16,NewickData{Float64,String}},1}:
  ((A:1.2,B:1.4)86.0:0.2,C:0.6);
  (A:1.2,B:1.4)86.0:0.2;
- A:1.2
- B:1.4
- C:0.6
+ A:1.2;
+ B:1.4;
+ C:0.6;
 ```
 
 these tend to be faster (at least for small trees?)
@@ -135,7 +135,6 @@ The following functions should be defined
 ```julia
 NewickTree.name(x::Tuple) = ""
 NewickTree.name(x::Int) = string(x)
-NewickTree.support(x::Union{Int,Tuple}) = NaN
 NewickTree.distance(x::Union{Int,Tuple}) = NaN
 NewickTree.isleaf(x) = typeof(x) == Int ? true : false
 ```
@@ -176,7 +175,7 @@ Literate.markdown(
     documenter=false, execute=true)
 ```
 ```
-LoadError("string", 2, ArgumentError("cannot find inputfile `/home/arzwa/dev/NewickTree/README.jl`"))
+"/home/arzwa/dev/NewickTree/README.md"
 ```
 
 using the execute-markdown branch now
