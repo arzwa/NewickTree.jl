@@ -4,7 +4,7 @@ using AbstractTrees
 
 export Node, NewickData
 export isroot, isleaf, postwalk, prewalk, children, getroot, getlca, getleaves
-export insertnode!, print_tree, readnw, writenw
+export insertnode!, print_tree, readnw, writenw, degree
 export distance, name, id, nwstr
 
 """
@@ -50,6 +50,7 @@ setdistance!(n::NewickData, x) = n.distance = x
 setsupport!(n::NewickData, x) = n.support = x
 
 Node(i; kwargs...) = Node(i, NewickData(; kwargs...))
+Node(i, p::Node; kwargs...) = Node(i, NewickData(; kwargs...), p)
 id(n::Node) = n.id
 data(n::Node) = n.data
 name(n::Node) = name(n.data)
@@ -57,7 +58,7 @@ support(n::Node) = support(n.data)
 distance(n::Node{I,T}) where {I,T} =
     hasmethod(distance, Tuple{T}) ? distance(n.data) : NaN
 isroot(n::Node) = !isdefined(n, :parent)
-isleaf(n::Node) = !isdefined(n, :children)
+isleaf(n::Node) = !isdefined(n, :children) || length(n) == 0
 degree(n::Node) = isleaf(n) ? 0 : length(n.children)
 
 Base.parent(n::Node) = isdefined(n, :parent) ? n.parent : nothing
@@ -66,7 +67,7 @@ Base.eltype(::Type{Node{T}}) where T = Node{T}
 Base.first(n::Node) = first(children(n))
 Base.last(n::Node) = last(children(n))
 Base.length(n::Node) = length(n.children)
-
+Base.pop!(n::Node) = pop!(n.children)
 Base.delete!(n::Node{I}, i::I) where I =
     deleteat!(n.children, findfirst(c->id(c) == i, children(n)))
 Base.delete!(n::Node, m::Node) =
@@ -195,7 +196,7 @@ the tree data type should allow `nwstr(n)` to work. See the `nwstr`
 docstring.
 """
 writenw(io::IO, n) = write(io, nwstr(n))
-writenw(fname::AbstractString, n) = write(fname, nwstr(n))
+writenw(fname::AbstractString, n) = write(fname, nwstr(n) * "\n")
 
 function readnw(io::IOBuffer, I::Type=UInt16)
     i = I(1)

@@ -38,7 +38,11 @@ collect(PostOrderDFS(t))
 postwalk(t)
 prewalk(t)
 
-# these tend to be faster (at least for small trees?)
+# these tend to be faster (at least for small trees?). There are also the following obvious functions:
+
+getleaves(t)
+getroot(t)
+getlca(t, "A", "B")  # get last common ancestor
 
 # ## Writing trees
 

@@ -84,7 +84,16 @@ prewalk(t)
  C:0.6;
 ```
 
-these tend to be faster (at least for small trees?)
+these tend to be faster (at least for small trees?). There are also the following obvious functions:
+
+```julia
+getleaves(t)
+getroot(t)
+getlca(t, "A", "B")  # get last common ancestor
+```
+```
+(A:1.2,B:1.4)86.0:0.2;
+```
 
 ## Writing trees
 
