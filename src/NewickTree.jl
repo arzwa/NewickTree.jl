@@ -60,6 +60,12 @@ distance(n::Node{I,T}) where {I,T} =
 isroot(n::Node) = !isdefined(n, :parent)
 isleaf(n::Node) = !isdefined(n, :children) || length(n) == 0
 degree(n::Node) = isleaf(n) ? 0 : length(n.children)
+nv(n::Node) = length(prewalk(n))
+
+# defaults
+name(x) = string(x)
+support(x) = NaN
+distance(x) = NaN
 
 Base.parent(n::Node) = isdefined(n, :parent) ? n.parent : nothing
 Base.parent(root, n::Node) = isdefined(n, :parent) ? n.parent : nothing
@@ -169,14 +175,14 @@ methods, and optionally `support()`. If `support` is implemented for the
 data type and it is not NaN, it will supersede `name` for the labeling of
 internal nodes. See for instance the `NewickData` type.
 """
-function nwstr(n)
+function nwstr(n; internal=false)
     function walk(n)
         d = stringify(':', distance(n))
         isleaf(n) && return "$(name(n))$d"
         s = join([walk(c) for c in children(n)], ",")
         sv = hasmethod(support, Tuple{typeof(n)}) ?
             stringify(support(n)) : ""
-        sv = sv == "" ? name(n) : sv
+        sv = sv == "" && internal ? name(n) : sv
         d = stringify(':', distance(n))
         return "($s)$sv$d"
     end
@@ -317,7 +323,8 @@ function insertnode!(n::Node{I,<:NewickData}; dist=NaN, name="") where I
     insertnode!(n, Node(I(i), NewickData(d=dist, n=name)))
 end
 
-function getlca(n::Node, a::String, b::String)
+getlca(n::Node, a) = getlca(n, a, a)
+function getlca(n::Node, a, b)
     clade = getleaves(n)
     m = clade[findfirst(x->name(x)==a, clade)]
     while !(b ∈ name.(getleaves(m)))
