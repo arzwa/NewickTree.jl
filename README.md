@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/arzwa/NewickTree.jl.svg?branch=master)](https://travis-ci.com/arzwa/NewickTree.jl)
+
 # NewickTree.jl
 
 Read a [newick tree](http://evolution.genetics.washington.edu/phylip/newicktree.html) to a tree data structure. The resulting data structure supports the [AbstractTrees.jl](https://github.com/JuliaCollections/AbstractTrees.jl) interface.
