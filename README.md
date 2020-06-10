@@ -42,34 +42,7 @@ fieldnames(typeof(t))
 (:id, :data, :parent, :children)
 ```
 
-Functions from `AbstractTrees` can be used, for instance
-
-```julia
-using AbstractTrees
-collect(Leaves(t))
-```
-```
-3-element Array{Node{UInt16,NewickData{Float64,String}},1}:
- A:1.2;
- B:1.4;
- C:0.6;
-```
-
-or
-
-```julia
-collect(PostOrderDFS(t))
-```
-```
-5-element Array{Node{UInt16,NewickData{Float64,String}},1}:
- A:1.2;
- B:1.4;
- (A:1.2,B:1.4)86.0:0.2;
- C:0.6;
- ((A:1.2,B:1.4)86.0:0.2,C:0.6);
-```
-
-some simple recursive tree traversals are also implemented
+Some simple recursive tree traversals are implemented
 
 ```julia
 postwalk(t)
@@ -84,7 +57,7 @@ prewalk(t)
  C:0.6;
 ```
 
-these tend to be faster (at least for small trees?). There are also the following obvious functions:
+There are also the following self-explanatory functions:
 
 ```julia
 getleaves(t)
@@ -93,6 +66,22 @@ getlca(t, "A", "B")  # get last common ancestor
 ```
 ```
 (A:1.2,B:1.4)86.0:0.2;
+```
+
+Functions from `AbstractTrees` can also be used, for instance
+
+```julia
+using AbstractTrees
+collect(Leaves(t))
+collect(PostOrderDFS(t))
+```
+```
+5-element Array{Node{UInt16,NewickData{Float64,String}},1}:
+ A:1.2;
+ B:1.4;
+ (A:1.2,B:1.4)86.0:0.2;
+ C:0.6;
+ ((A:1.2,B:1.4)86.0:0.2,C:0.6);
 ```
 
 ## Writing trees
@@ -122,8 +111,9 @@ String(take!(io))
 Any data structure that implements the AbstractTrees interface (i.e. defines `AbstractTrees.children`) can be written to a Newick structure provided several functions are defined. For example:
 
 ```julia
-using AbstractTrees
 t = (((1,2),3),(4,5))
+NewickTree.isleaf(::Int) = true
+NewickTree.isleaf(::Tuple) = false
 print_tree(t)
 ```
 
@@ -137,15 +127,6 @@ print_tree(t)
 └─ (4, 5)
    ├─ 4
    └─ 5
-```
-
-The following functions should be defined
-
-```julia
-NewickTree.name(x::Tuple) = ""
-NewickTree.name(x::Int) = string(x)
-NewickTree.distance(x::Union{Int,Tuple}) = NaN
-NewickTree.isleaf(x) = typeof(x) == Int ? true : false
 ```
 
 This enables us to use the `nwstr` and `writenw` functions
@@ -183,13 +164,7 @@ Literate.markdown(
     joinpath(@__DIR__, "../"),
     documenter=false, execute=true)
 ```
-```
-"/home/arzwa/dev/NewickTree/README.md"
-```
-
-using the execute-markdown branch now
 
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
-

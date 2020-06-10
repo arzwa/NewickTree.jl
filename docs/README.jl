@@ -27,27 +27,23 @@ end
 # The tree data structure is pretty straightforward, with nodes storing the following fields:
 fieldnames(typeof(t))
 
-# Functions from `AbstractTrees` can be used, for instance
-using AbstractTrees
-collect(Leaves(t))
-
-# or
-collect(PostOrderDFS(t))
-
-# some simple recursive tree traversals are also implemented
+# Some simple recursive tree traversals are implemented
 postwalk(t)
 prewalk(t)
 
-# these tend to be faster (at least for small trees?). There are also the following obvious functions:
-
+# There are also the following self-explanatory functions:
 getleaves(t)
 getroot(t)
 getlca(t, "A", "B")  # get last common ancestor
 
+# Functions from `AbstractTrees` can also be used, for instance
+using AbstractTrees
+collect(Leaves(t))
+collect(PostOrderDFS(t))
+
 # ## Writing trees
 
 # `nwstr` converts a tree data structure that implements the required functions (see below) to a Newick string:
-
 nwstr(t)
 
 # `writenw` uses this to write to a stream or file.
@@ -59,8 +55,9 @@ String(take!(io))
 # ## Support for writing other tree structured data to Newick strings
 
 # Any data structure that implements the AbstractTrees interface (i.e. defines `AbstractTrees.children`) can be written to a Newick structure provided several functions are defined. For example:
-using AbstractTrees
 t = (((1,2),3),(4,5))
+NewickTree.isleaf(::Int) = true
+NewickTree.isleaf(::Tuple) = false
 print_tree(t)
 # ```
 # (((1, 2), 3), (4, 5))
@@ -73,12 +70,6 @@ print_tree(t)
 #    ├─ 4
 #    └─ 5
 # ```
-
-# The following functions should be defined
-NewickTree.name(x::Tuple) = ""
-NewickTree.name(x::Int) = string(x)
-NewickTree.distance(x::Union{Int,Tuple}) = NaN
-NewickTree.isleaf(x) = typeof(x) == Int ? true : false
 
 # This enables us to use the `nwstr` and `writenw` functions
 s = nwstr(t)
@@ -99,9 +90,8 @@ print_tree(n)
 #    └─ 5
 # ```
 
-using Literate 
+using Literate
 Literate.markdown(
     joinpath(@__DIR__, "README.jl"),
     joinpath(@__DIR__, "../"),
     documenter=false, execute=true)
-# using the execute-markdown branch now

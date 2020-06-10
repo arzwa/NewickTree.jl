@@ -1,23 +1,57 @@
 using Test
 using NewickTree, AbstractTrees
 
-@testset "Tree reading" begin
-    n = readnw(IOBuffer("((A:1,B:2)90:1,C:1);"))
-    @test length(collect(Leaves(n))) == 3
-    @test distance(n) === NaN
-    @test distance(first(n)) == 1.
-    @test name(last(n)) == "C"
+@testset "NewickTree" begin
+    @testset "Tree reading" begin
+        n = readnw(IOBuffer("((A:1,B:2)90:1,C:1);"))
+        @test length(collect(getleaves(n))) == 3
+        @test distance(n) === NaN
+        @test distance(first(n)) == 1.
+        @test name(last(n)) == "C"
 
-    n = readnw(readline(joinpath(@__DIR__, "ncov-spike.nw")))
-    @test map(x->(name(x), distance(x)), Leaves(n))[3][2] == 0.182372964
-    @test name(postwalk(n)[12]) == "Human_coronavirus_OC43__YP_009555241.1"
+        n = readnw(readline(joinpath(@__DIR__, "ncov-spike.nw")))
+        @test map(x->(name(x), distance(x)), getleaves(n))[3][2] == 0.182372964
+        @test name(postwalk(n)[12]) == "Human_coronavirus_OC43__YP_009555241.1"
 
-    t = readnw("((bears : 10 , dogs :1)  carnivores, the penguins are here );")
-    T = Tree(t)
-    @test name(T[1][2]) == "dogs"
-    @test name(T[2]) == "the penguins are here"
+        t = readnw("((bears : 10 , dogs :1)  carnivores, the penguins here );")
+        @test name(t[1][2]) == "dogs"
+        @test name(t[2]) == "the penguins here"
 
-    t = readnw("( (a : 10 , b : 1) 97 : 8, hello\nlobster\t )  ;  ")
-    @test name(t[2]) == "hello\nlobster"
-    @test NewickTree.support(t[1]) == 97
+        t = readnw("( (a : 10 , b : 1) 97 : 8, hello\nlobster\t )  ;  ")
+        @test name(t[2]) == "hello\nlobster"
+        @test NewickTree.support(t[1]) == 97
+    end
+
+    @testset "AbstractTrees interface" begin
+        n = readnw(readline(joinpath(@__DIR__, "ncov-spike.nw")))
+        @test Set(collect(Leaves(n))) == Set(getleaves(n))
+        t = Tree(n)
+        @test t[2][1] == n[2][1]
+        collect(PostOrderDFS(t)) .== postwalk(n)
+        collect(PreOrderDFS(t)) .== prewalk(n)
+        # NOTE: the order doesn't have to be exactly the same, but
+        # turns out it is.
+    end
+
+    @testset "LCA and paths" begin
+        t = readnw("(((atr:2.47,(osa:1.82,vvi:1.82):0.65):0.91,(gbi:2.90,"*
+            "(gmo:1.77,wmi:1.77):1.13):0.48):0.80,(afi:0.87,scu:0.87):3.31);")
+        for n in getleaves(t)
+            @test NewickTree.height(n) ≈ 4.18
+        end
+        @test length(getleaves(getlca(t, "atr", "gbi"))) == 6
+        @test NewickTree.height(getlca(t, "atr", "osa")) == 1.71
+        l, r = NewickTree.getpath(getlca(t, "atr"), getlca(t, "osa"))
+        @test length(l) == 2
+        @test length(r) == 3
+    end
+
+    @testset "Other (non `Node` based) tree structures" begin
+        t = (((1,2),3),(4,5))
+        NewickTree.isleaf(::Int) = true
+        NewickTree.isleaf(::Tuple) = false
+        @test nwstr(t) == "(((1,2),3),(4,5));"
+        @test nwstr(t[1]) == "((1,2),3);"
+        @test nwstr(t[2][1]) == "4;"
+    end
 end
