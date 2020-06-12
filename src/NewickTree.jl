@@ -249,15 +249,15 @@ methods, and optionally `support()`. If `support` is implemented for the
 data type and it is not NaN, it will supersede `name` for the labeling of
 internal nodes. See for instance the `NewickData` type.
 """
-function nwstr(n; internal=false)
+function nwstr(n; internal=false, dist=true)
     function walk(n)
-        d = stringify(':', distance(n))
+        d = dist ? stringify(':', distance(n)) : ""
         isleaf(n) && return "$(name(n))$d"
         s = join([walk(c) for c in children(n)], ",")
         sv = hasmethod(support, Tuple{typeof(n)}) ?
             stringify(support(n)) : ""
         sv = sv == "" && internal ? name(n) : sv
-        d = stringify(':', distance(n))
+        d = dist ? stringify(':', distance(n)) : ""
         return "($s)$sv$d"
     end
     s = walk(n)
