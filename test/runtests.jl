@@ -55,3 +55,21 @@ using NewickTree, AbstractTrees
         @test nwstr(t[2][1]) == "4;"
     end
 end
+
+
+# Benchmark on ncov-spike.nw (11/06/2020)
+# reading
+# NewickTree.jl:
+# julia> @btime readnw(s);
+#   113.429 μs (3671 allocations: 135.02 KiB)
+# Phylo.jl:
+# julia> @btime Phylo.parsenewick(s);
+#   373.154 μs (3151 allocations: 253.85 KiB)
+
+# postorder
+# NewickTree.jl
+# julia> @btime postwalk(t);
+#   1.102 μs (8 allocations: 1.19 KiB)
+# Phylo.jl
+# julia> @btime traversal(t, postorder);
+#   8.715 μs (174 allocations: 7.97 KiB)
