@@ -46,7 +46,7 @@ mutable struct Node{I,T}
     children::Vector{Node{I,T}}
 
     Node(id::I, data::T) where {I,T} = new{I,T}(id, data)
-
+    Node(id::I, data::T, p::Nothing) where {I,T} = new{I,T}(id, data)
     function Node(id::I, data::T, p) where {I,T}
         n = new{I,T}(id, data, p)
         push!(p, n)
@@ -62,6 +62,10 @@ data(n::Node) = n.data
 name(n::Node) = name(n.data)
 support(n::Node) = support(n.data)
 distance(n::Node) = distance(n.data)
+
+setname!(n::Node, s) = setname!(n.data, s)
+setsupport!(n::Node, s) = setsupport(n.data, s)
+setdistance!(n::Node, d) = setdistance!(n.data, d)
 
 isroot(n::Node) = !isdefined(n, :parent)
 isleaf(n::Node) = !isdefined(n, :children) || length(n) == 0
@@ -148,6 +152,12 @@ function getpath(n::Node, m::Node)
     p1[1:i1], p2[1:i2]
 end
 
+# distance between two nodes
+function getdistance(n::Node, m::Node)
+    p1, p2 = getpath(n, m)
+    sum(distance.(p1[1:end-1])) + sum(distance.(p2[1:end-1]))
+end
+
 # path connecting node to the root
 function getpath(n::Node)
     path = typeof(n)[]
@@ -193,12 +203,23 @@ function extract(n::Node{I,T}, l::AbstractVector) where {I,T}
     walk(n)
 end
 
+"""
+    insertnode!(n, m)
+
+Insert node `m` between `n` and its parent at a distance `distance(n) -
+distance(m)` from node `n`.
+"""
 function insertnode!(n::Node{I,T}, m::Node{I,T}) where {I,T}
     a = parent(n)
     delete!(a, n); push!(a, m); push!(m, n)
     setdistance!(n.data, distance(n) - distance(m))
 end
 
+"""
+    insertnode!(n, dist=NaN, name="")
+
+Insert a new node with name `name` above `n` at a distance `dist` from `n`.
+"""
 function insertnode!(n::Node{I,<:NewickData}; dist=NaN, name="") where I
     i = maximum(id.(postwalk(getroot(n)))) + 1
     dist = isnan(dist) ? distance(n) / 2 : dist
