@@ -55,6 +55,12 @@ name(n::Node) = name(n.data)
 support(n::Node) = support(n.data)
 distance(n::Node) = distance(n.data)
 
+function reindex!(n::Node{I}) where I
+    for (i,n) in enumerate(prewalk(n))
+        n.id = I(i)
+    end
+end
+
 setname!(n::Node, s) = setname!(n.data, s)
 setsupport!(n::Node, s) = setsupport(n.data, s)
 setdistance!(n::Node, d) = setdistance!(n.data, d)
@@ -63,6 +69,12 @@ isroot(n::Node) = !isdefined(n, :parent)
 isleaf(n::Node) = !isdefined(n, :children) || length(n) == 0
 degree(n::Node) = isleaf(n) ? 0 : length(n.children)
 nv(n::Node) = length(prewalk(n))
+
+function getnode(f, n::Node) 
+    for x in prewalk(n)
+        f(x) && return x
+    end
+end
 
 Base.pop!(n::Node) = pop!(n.children)
 Base.last(n::Node) = last(children(n))
@@ -76,13 +88,15 @@ Base.setindex!(n::Node, x, i) = n.children[i] = x
 Base.parent(n::Node) = isdefined(n, :parent) ? n.parent : nothing
 Base.parent(root, n::Node) = isdefined(n, :parent) ? n.parent : nothing
 
-function Base.delete!(n, i::Integer)
+function Base.delete!(n::Node, i::Integer)
     deleteat!(n.children, findfirst(c->id(c) == i, children(n)))
 end
 
 function Base.delete!(n::Node, m::Node) 
     deleteat!(n.children, findfirst(c->c == m, children(n)))
 end
+
+Base.push!(n::Node, args...) = for x in args; push!(n, x); end
 
 function Base.push!(n::Node, m::Node)
     isdefined(n, :children) ? 
@@ -96,6 +110,17 @@ function getroot(n::Node)
         n = parent(n) 
     end
     return n
+end
+
+function findleaf(n::Node, s::String)
+    for x in getleaves(n)
+        name(x) == s && return x
+    end
+end
+
+function sister(n::Node)
+    xs = children(parent(n))
+    xs[findfirst(x->x != n, xs)]
 end
 
 Base.show(io::IO, n::Node{I,<:NewickData}) where I = write(io, "$(nwstr(n))")
@@ -237,8 +262,12 @@ Insert node `m` between `n` and its parent at a distance `distance(n) -
 distance(m)` from node `n`.
 """
 function insertnode!(n::Node{I,T}, m::Node{I,T}) where {I,T}
-    a = parent(n)
-    delete!(a, n); push!(a, m); push!(m, n)
+    if !isroot(n)
+        a = parent(n)
+        delete!(a, n)
+        push!(a, m)
+    end
+    push!(m, n)
     setdistance!(n.data, distance(n) - distance(m))
 end
 
@@ -248,9 +277,11 @@ end
 Insert a new node with name `name` above `n` at a distance `dist` from `n`.
 """
 function insertnode!(n::Node{I,<:NewickData}; dist=NaN, name="") where I
-    i = maximum(id.(postwalk(getroot(n)))) + 1
+    i = maximum(id, postwalk(getroot(n))) + 1
     dist = isnan(dist) ? distance(n) / 2 : dist
-    insertnode!(n, Node(I(i), NewickData(d=dist, n=name)))
+    m = Node(I(i), NewickData(d=dist, n=name))
+    insertnode!(n, m)
+    return m
 end
 
 """
@@ -259,13 +290,13 @@ end
 Get the last common ancestor of taxona and taxonb in the tree rooted in node n.
 """
 getlca(n::Node, a) = getlca(n, a, a)
-function getlca(n::Node, a, b)
-    clade = getleaves(n)
-    m = clade[findfirst(x->name(x)==a, clade)]
-    while !(b ∈ name.(getleaves(m)))
-        m = parent(m)
+getlca(n::Node, a, b) = getlca(findleaf(n, a), findleaf(n, b))
+
+function getlca(a::Node, b::Node)
+    while !(b ∈ getleaves(a))
+        a = parent(a)
     end
-    return m
+    return a
 end
 
 """
@@ -280,3 +311,51 @@ function getleaves(n::N) where N<:Node  # mostly faster than Leaves...
     end
     xs
 end
+
+"""
+    set_outgroup!(node::Node)
+
+Set the node `node` as an outgroup to the tree to which it belongs. This will
+introduce a root node between `node` and its parent. This is mainly meant for
+rooting unrooted trees which are represented by Newick string with a
+trifurcation at the root.
+
+```julia
+julia> tr = readnw("(A,(B,(C,D)),E);")
+(A,(B,(C,D)),E);
+
+julia> NewickTree.set_outgroup!(tr[2][1])
+(((C,D),(A,E)),B);
+```
+"""
+function set_outgroup!(node::Node{I}) where I
+    i = maximum(id, prewalk(node)) + 1
+    newroot = Node(I(i), NewickData())    
+    # nodes above where the root will be inserted, this is the part of the
+    # tree that has to be reoriented
+    p = parent(node)
+    alongtheway = [node]
+    while !isnothing(p)
+        push!(alongtheway, p) 
+        p = parent(p)
+    end
+    # reorient the part of the tree above the new root node
+    while length(alongtheway) > 1
+        p = pop!(alongtheway)
+        # this will become the parent of p
+        a = filter(x->id(x) == id(alongtheway[end]), children(p))[1]  
+        d = distance(a)
+        delete!(p, id(a))
+        if a != node
+            push!(a, p)
+            setdistance!(p, d)
+        else
+            push!(newroot, p)
+            setdistance!(p, d/2)
+        end
+    end 
+    push!(newroot, node)
+    setdistance!(node, distance(node)/2)
+    return newroot
+end
+

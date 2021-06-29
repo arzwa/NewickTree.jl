@@ -1,5 +1,13 @@
 # Parsing and I/O
 """
+A string macro to read a newick string to a tree. Just to have the
+syntactic sugar enabling `nw"((A,B),C);"`
+"""
+macro nw_str(s)
+   readnw(s)
+end
+
+"""
     readnw(s::AbstractString, I::Type)
 
 Read a newick string to a tree. Supports the original Newick standard
