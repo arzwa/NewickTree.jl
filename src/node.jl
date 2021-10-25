@@ -207,7 +207,7 @@ end
 Get node heights for the subtree rooted in `n`. The root has height 0!.
 """
 function getheights(n::Node)
-    d = Dict(id(n) => 0.)
+    d = Dict(id(n) => isnan(distance(n)) ? 0. : distance(n))
     function walk(n)
         if !haskey(d, id(n)) 
             d[id(n)] = d[id(parent(n))] + distance(n)
@@ -225,8 +225,8 @@ height(n::Node) = distance.(getpath(n)) |> x->filter(!isnan, x) |> sum
 """
     extract(n::Node, l::AbstractVector{String})
 
-Extract the tree with leaves in `l` from a given tree, preserving distances if
-relevant.
+Extract the tree with leaves in `l` from a given tree, preserving
+distances if relevant.
 """
 function extract(n::Node{I,T}, l::AbstractVector) where {I,T}
     function walk(n)
@@ -359,3 +359,39 @@ function set_outgroup!(node::Node{I}) where I
     return newroot
 end
 
+"""
+    prune!(tree, leaves)
+
+Prune `leaves` from the tree, i.e. get the tree structure for the
+complement of `leaves`. This is actually the dual of `extract`.
+"""
+function prune!(n, leaves)
+    for x in leaves
+        x ∈ getleaves(n) && recursive_prune!(x)
+    end
+    return n
+end
+
+function recursive_prune!(node)
+    degree(node) == 0 && isroot(node) && return node
+    if degree(node) == 0
+        delete!(parent(node), node)
+        pnode = parent(node)
+        node.parent = node
+        recursive_prune!(pnode)
+    elseif degree(node) == 1 && !isroot(node)
+        p = parent(node)
+        c = node[1]
+        setdistance!(c, distance(c) + distance(node))
+        node.parent = node
+        delete!(p, node)
+        push!(p, c)
+        c.parent = p
+    elseif degree(node) == 1 && isroot(node)
+        setdistance!(node, distance(node) + distance(node[1]))
+        node.children = children(node[1])
+        for c in children(node)
+            c.parent = node
+        end
+    end
+end
