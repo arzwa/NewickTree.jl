@@ -51,7 +51,7 @@ Node(i, p::Node; kwargs...) = Node(i, NewickData(; kwargs...), p)
 
 id(n::Node) = n.id
 data(n::Node) = n.data
-name(n::Node) = name(n.data)
+name(n::Node) = name(n.data) == "" ? string(id(n)) : name(n.data)   # fallback?
 support(n::Node) = support(n.data)
 distance(n::Node) = distance(n.data)
 
@@ -312,13 +312,16 @@ function getleaves(n::N) where N<:Node  # mostly faster than Leaves...
     xs
 end
 
+
 """
     set_outgroup!(node::Node)
 
 Set the node `node` as an outgroup to the tree to which it belongs. This will
 introduce a root node between `node` and its parent. This is mainly meant for
 rooting unrooted trees which are represented by Newick string with a
-trifurcation at the root.
+trifurcation at the root. This does not, for instance, allow one to reroot
+the tree at an arbitrary node in the unrooted tree (because all trees in
+NewickTree are in fact rooted...).
 
 ```julia
 julia> tr = readnw("(A,(B,(C,D)),E);")
@@ -329,11 +332,13 @@ julia> NewickTree.set_outgroup!(tr[2][1])
 ```
 """
 function set_outgroup!(node::Node{I}) where I
-    i = maximum(id, prewalk(node)) + 1
+    curr_root = getroot(node)
+    p = parent(node)
+    p == curr_root && length(children(curr_root)) == 2 &&  return p
+    i = maximum(id, prewalk(curr_root)) + 1
     newroot = Node(I(i), NewickData())    
     # nodes above where the root will be inserted, this is the part of the
     # tree that has to be reoriented
-    p = parent(node)
     alongtheway = [node]
     while !isnothing(p)
         push!(alongtheway, p) 
@@ -358,6 +363,10 @@ function set_outgroup!(node::Node{I}) where I
     setdistance!(node, distance(node)/2)
     return newroot
 end
+
+set_outgroup(node) = set_outgroup!(deepcopy(node))
+set_outgroup(tree, leafname)  = set_outgroup( getlca(tree, leafname)) 
+set_outgroup!(tree, leafname) = set_outgroup!(getlca(tree, leafname)) 
 
 """
     prune!(tree, leaves)
