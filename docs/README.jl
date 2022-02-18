@@ -62,11 +62,11 @@ String(take!(io))
 # There is a `Plots.jl` recipe defined in NewickTree, the following should work
 using Plots
 t = nw"(((((((Scer,Spar),Smik),Skud),Sbay),Scas),Sklu),Calb);"
-plot(t, transform=true)
+plot(t, transform=true);
 
 # this composes nicely with all other functionality in `Plots.jl`, for
 # instance:
-plot(plot(t, transform=true), plot(randn(100)))
+plot(plot(t, transform=true), plot(randn(100)));
 # ![](docs/example-plot.png)
 
 # ## Support for writing other tree structured data to Newick strings
@@ -78,17 +78,6 @@ t = (((1,2),3),(4,5))
 NewickTree.isleaf(::Int) = true
 NewickTree.isleaf(::Tuple) = false
 print_tree(t)
-# ```
-# (((1, 2), 3), (4, 5))
-# ├─ ((1, 2), 3)
-# │  ├─ (1, 2)
-# │  │  ├─ 1
-# │  │  └─ 2
-# │  └─ 3
-# └─ (4, 5)
-#    ├─ 4
-#    └─ 5
-# ```
 
 # This enables us to use the `nwstr` and `writenw` functions
 s = nwstr(t)
@@ -96,16 +85,4 @@ s = nwstr(t)
 # now we can read the Newick string
 n = readnw(s)
 print_tree(n)
-
-# ```
-# (((1,2),3),(4,5));
-# ├─ ((1,2),3);
-# │  ├─ (1,2);
-# │  │  ├─ 1
-# │  │  └─ 2
-# │  └─ 3
-# └─ (4,5);
-#    ├─ 4
-#    └─ 5
-# ```
 

@@ -142,14 +142,14 @@ There is a `Plots.jl` recipe defined in NewickTree, the following should work
 ````julia
 using Plots
 t = nw"(((((((Scer,Spar),Smik),Skud),Sbay),Scas),Sklu),Calb);"
-plot(t, transform=true)
+plot(t, transform=true);
 ````
 
 this composes nicely with all other functionality in `Plots.jl`, for
 instance:
 
 ````julia
-plot(plot(t, transform=true), plot(randn(100)))
+plot(plot(t, transform=true), plot(randn(100)));
 ````
 
 ![](docs/example-plot.png)
@@ -180,18 +180,6 @@ print_tree(t)
 
 ````
 
-```
-(((1, 2), 3), (4, 5))
-├─ ((1, 2), 3)
-│  ├─ (1, 2)
-│  │  ├─ 1
-│  │  └─ 2
-│  └─ 3
-└─ (4, 5)
-   ├─ 4
-   └─ 5
-```
-
 This enables us to use the `nwstr` and `writenw` functions
 
 ````julia
@@ -221,18 +209,6 @@ print_tree(n)
    └─ 5;
 
 ````
-
-```
-(((1,2),3),(4,5));
-├─ ((1,2),3);
-│  ├─ (1,2);
-│  │  ├─ 1
-│  │  └─ 2
-│  └─ 3
-└─ (4,5);
-   ├─ 4
-   └─ 5
-```
 
 ---
 
