@@ -51,7 +51,7 @@ Node(i, p::Node; kwargs...) = Node(i, NewickData(; kwargs...), p)
 
 id(n::Node) = n.id
 data(n::Node) = n.data
-name(n::Node) = name(n.data) == "" ? string(id(n)) : name(n.data)   # fallback?
+name(n::Node) = name(n.data)
 support(n::Node) = support(n.data)
 distance(n::Node) = distance(n.data)
 
@@ -210,7 +210,8 @@ function getheights(n::Node)
     d = Dict(id(n) => isnan(distance(n)) ? 0. : distance(n))
     function walk(n)
         if !haskey(d, id(n)) 
-            d[id(n)] = d[id(parent(n))] + distance(n)
+            x = isnan(distance(n)) ? 1. : distance(n)
+            d[id(n)] = d[id(parent(n))] + x
         end
         for c in children(n)
             walk(c)
