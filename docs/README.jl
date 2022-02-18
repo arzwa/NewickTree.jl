@@ -68,16 +68,13 @@ String(take!(io))
 # ## Plotting trees
 #
 # There is a `Plots.jl` recipe defined in NewickTree, the following should work
-#```julia
-#using Plots
-#t = nw"(((((((Scer,Spar),Smik),Skud),Sbay),Scas),Sklu),Calb);"
-#plot(t, transform=true)
-#```
+using Plots
+t = nw"(((((((Scer,Spar),Smik),Skud),Sbay),Scas),Sklu),Calb);"
+plot(t, transform=true)
+
 # this composes nicely with all other functionality in `Plots.jl`, for
 # instance:
-# ```julia
-# plot(plot(t, transform=true), plot(randn(100)))
-# ```
+plot(plot(t, transform=true), plot(randn(100)))
 # ![](docs/example-plot.png)
 
 # ## Support for writing other tree structured data to Newick strings
@@ -120,10 +117,3 @@ print_tree(n)
 #    └─ 5
 # ```
 
-#```julia
-#using Literate
-#Literate.markdown(
-#    joinpath(@__DIR__, "README.jl"),
-#    joinpath(@__DIR__, "../"),
-#    documenter=false, execute=true)
-#```

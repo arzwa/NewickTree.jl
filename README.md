@@ -148,18 +148,20 @@ String(take!(io))
 There is a `Plots.jl` recipe defined in NewickTree, the following should work
 
 ````julia
-#```julia
-#using Plots
-#t = nw"(((((((Scer,Spar),Smik),Skud),Sbay),Scas),Sklu),Calb);"
-#plot(t, transform=true)
-#```
+using Plots
+t = nw"(((((((Scer,Spar),Smik),Skud),Sbay),Scas),Sklu),Calb);"
+plot(t, transform=true)
 ````
+![](1482505359.svg)
 
 this composes nicely with all other functionality in `Plots.jl`, for
 instance:
-```julia
+
+````julia
 plot(plot(t, transform=true), plot(randn(100)))
-```
+````
+![](2715254079.svg)
+
 ![](docs/example-plot.png)
 
 ## Support for writing other tree structured data to Newick strings
@@ -241,6 +243,7 @@ print_tree(n)
    ├─ 4
    └─ 5
 ```
+
 
 ---
 
