@@ -37,32 +37,14 @@ t = nw"((A:1.2,B:1.4)86:0.2,C:0.6);"
 ((A:1.2,B:1.4)86.0:0.2,C:0.6);
 ````
 
-Note that trees should adhere to the Newick standard, they should end with a
-semicolon and can only contain (1) leaf names, (2) support values *or*
-internal names and (3) branch lengths as node information. Failure to provide
-a valid Newick string will trigger an error:
+Subtrees can be accessed by indexing
 
 ````julia
-try
-    t = readnw("((A:1.2,B:1.4)86:0.2,C:0.6)")
-catch ex
-    @show ex
-end
+t[1]
 ````
 
 ````
-"Malformed Newick string '((A:1.2,B:1.4)86:0.2,C:0.6)' (no trailing semicolon?)"
-````
-
-The tree data structure is pretty straightforward, with nodes storing the
-following fields:
-
-````julia
-fieldnames(typeof(t))
-````
-
-````
-(:id, :data, :parent, :children)
+(A:1.2,B:1.4)86.0:0.2;
 ````
 
 Some simple recursive tree traversals are implemented
@@ -153,6 +135,36 @@ plot(plot(t, transform=true), plot(randn(100)));
 ````
 
 ![](docs/example-plot.png)
+
+## Further details
+
+Note that trees should adhere to the Newick standard, they should end with a
+semicolon and can only contain (1) leaf names, (2) support values *or*
+internal names and (3) branch lengths as node information. Failure to provide
+a valid Newick string will trigger an error:
+
+````julia
+try
+    t = readnw("((A:1.2,B:1.4)86:0.2,C:0.6)")
+catch ex
+    @show ex
+end
+````
+
+````
+"Malformed Newick string '((A:1.2,B:1.4)86:0.2,C:0.6)' (no trailing semicolon?)"
+````
+
+The tree data structure is pretty straightforward, with nodes storing the
+following fields:
+
+````julia
+fieldnames(typeof(t))
+````
+
+````
+(:id, :data, :parent, :children)
+````
 
 ## Support for writing other tree structured data to Newick strings
 

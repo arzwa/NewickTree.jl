@@ -18,19 +18,8 @@ print_tree(t)
 # use
 t = nw"((A:1.2,B:1.4)86:0.2,C:0.6);"
 
-# Note that trees should adhere to the Newick standard, they should end with a
-# semicolon and can only contain (1) leaf names, (2) support values *or*
-# internal names and (3) branch lengths as node information. Failure to provide
-# a valid Newick string will trigger an error:
-try
-    t = readnw("((A:1.2,B:1.4)86:0.2,C:0.6)")
-catch ex
-    @show ex
-end
-
-# The tree data structure is pretty straightforward, with nodes storing the
-# following fields:
-fieldnames(typeof(t))
+# Subtrees can be accessed by indexing
+t[1]
 
 # Some simple recursive tree traversals are implemented
 postwalk(t)
@@ -68,6 +57,23 @@ plot(t, transform=true);
 # instance:
 plot(plot(t, transform=true), plot(randn(100)));
 # ![](docs/example-plot.png)
+
+
+# ## Further details
+#
+# Note that trees should adhere to the Newick standard, they should end with a
+# semicolon and can only contain (1) leaf names, (2) support values *or*
+# internal names and (3) branch lengths as node information. Failure to provide
+# a valid Newick string will trigger an error:
+try
+    t = readnw("((A:1.2,B:1.4)86:0.2,C:0.6)")
+catch ex
+    @show ex
+end
+
+# The tree data structure is pretty straightforward, with nodes storing the
+# following fields:
+fieldnames(typeof(t))
 
 # ## Support for writing other tree structured data to Newick strings
 
