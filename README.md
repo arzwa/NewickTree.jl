@@ -152,7 +152,6 @@ using Plots
 t = nw"(((((((Scer,Spar),Smik),Skud),Sbay),Scas),Sklu),Calb);"
 plot(t, transform=true)
 ````
-![](1482505359.svg)
 
 this composes nicely with all other functionality in `Plots.jl`, for
 instance:
@@ -160,8 +159,6 @@ instance:
 ````julia
 plot(plot(t, transform=true), plot(randn(100)))
 ````
-![](2715254079.svg)
-
 ![](docs/example-plot.png)
 
 ## Support for writing other tree structured data to Newick strings
