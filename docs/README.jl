@@ -12,14 +12,6 @@ using NewickTree
 t = readnw("((A:1.2,B:1.4)86:0.2,C:0.6);")
 print_tree(t)
 
-# ```
-# ((A:1.2,B:1.4)86.0:1.4,C:0.6);
-# ├─ (A:1.2,B:1.4);
-# │  ├─ A:1.2
-# │  └─ B:1.4
-# └─ C:0.6
-# ```
-
 # Use `readnw(readline("your_file.nw"))` to read a newick tree from a file. Use
 # `readnw.(readlines("your_file.nw"))` to read a vector of trees from a file
 # with a newick tree on each line. To read a single newick string one can also
