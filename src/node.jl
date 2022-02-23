@@ -207,7 +207,7 @@ end
 Get node heights for the subtree rooted in `n`. The root has height 0!.
 """
 function getheights(n::Node)
-    d = Dict(id(n) => isnan(distance(n)) ? 0. : distance(n))
+    d = Dict(id(n) => !isfinite(distance(n)) ? 0. : distance(n))
     function walk(n)
         if !haskey(d, id(n)) 
             x = isnan(distance(n)) ? 1. : distance(n)
@@ -318,14 +318,14 @@ end
     set_outgroup!(node::Node)
 
 Set the node `node` as an outgroup to the tree to which it belongs. This will
-introduce a root node between `node` and its parent. This is mainly meant for
-rooting unrooted trees which are represented by Newick string with a
-trifurcation at the root. This does not, for instance, allow one to reroot
-the tree at an arbitrary node in the unrooted tree (because all trees in
-NewickTree are in fact rooted...).
+introduce a root node between `node` and its parent. When the tree has a
+trifurcating root, this will resolve the trifurcation (i.e. root the tree).
+When the tree is already bifuracting, this will reroot the tree. (perhaps it
+would be wise to split these two functionalities, since they do different
+things... i.e. rooting/rerooting).
 
 ```julia
-julia> tr = readnw("(A,(B,(C,D)),E);")
+julia> tr = nw"(A,(B,(C,D)),E);"
 (A,(B,(C,D)),E);
 
 julia> NewickTree.set_outgroup!(tr[2][1])
@@ -334,8 +334,12 @@ julia> NewickTree.set_outgroup!(tr[2][1])
 """
 function set_outgroup!(node::Node{I}) where I
     curr_root = getroot(node)
+    # someone tried to set the root as outgroup, return just the root
+    # (or should we error? or should we proceed, returning `(node);`)
+    curr_root == node && return node
     p = parent(node)
-    p == curr_root && length(children(curr_root)) == 2 &&  return p
+    # node is already an outgroup
+    p == curr_root && length(children(curr_root)) == 2 && return p
     i = maximum(id, prewalk(curr_root)) + 1
     newroot = Node(I(i), NewickData())    
     # nodes above where the root will be inserted, this is the part of the
@@ -362,6 +366,13 @@ function set_outgroup!(node::Node{I}) where I
     end 
     push!(newroot, node)
     setdistance!(node, distance(node)/2)
+    if length(children(curr_root)) == 1  
+        # when the previous root was not multifurcating, we end up with a
+        # superfluous node, so we delete it
+        p = parent(curr_root)
+        delete!(p, id(curr_root))
+        push!(p, curr_root[1])
+    end
     return newroot
 end
 

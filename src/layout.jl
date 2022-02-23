@@ -54,7 +54,7 @@ function treepositions(tr, transform=false)
     end
     walk(tr)
     # if the root branch has non-zero length we add this:
-    if !isnan(distance(tr))
+    if isfinite(distance(tr))
         xr, yr = nodepos[id(tr)]
         d = distance(tr)
         x = hcat(x, [xr, xr, xr, xr])
@@ -64,7 +64,7 @@ function treepositions(tr, transform=false)
 end
 
 # very inelegant, but works
-@recipe function f(n::Node; orientation=1, pad=1., internal=false, transform=false)
+@recipe function f(n::Node; orientation=1, pad=1., fs=9, internal=false, transform=false, scalebar=0, namefun=name)
     nleaves = length(getleaves(n))
     legend --> false
     linecolor --> :black
@@ -73,37 +73,63 @@ end
     xshowaxis --> false
     xticks --> false
     yticks --> false
+    framestyle --> :default
     x, y, nodepos = treepositions(n, transform)
+    y1, y2 = extrema(y)
+    re = (y2 - y1) % scalebar
+    pad *= y2
     if internal
-        l = Dict(id(n)=>name(n) for n in postwalk(n))
+        l = Dict(id(n)=>namefun(n) for n in postwalk(n))
     else
-        l = Dict(id(n)=>name(n) for n in getleaves(n))
+        l = Dict(id(n)=>namefun(n) for n in getleaves(n))
     end
     fontfamily --> "helvetica oblique"
     if orientation == 1
         yforeground_color_axis --> :white
-        ylims --> (0.5, nleaves + 0.5)
-        xlims --> (0, maximum(y) + pad)
+        ylims --> (0.25, nleaves + 0.5)
+        xlims --> (-0.5, y2 + pad)
         x, y = y, x
-        anns = [(y, x, (" " * l[i], :left)) for (i,(x,y)) in nodepos if haskey(l, i)]
+        anns = [(y, x, (" " * l[i], fs, :left)) for (i,(x,y)) in nodepos if haskey(l, i)]
     elseif orientation == 2
         xforeground_color_axis --> :white
         xlims --> (0.5, nleaves + 0.5)
-        ylims --> (0, maximum(y) + pad)
-        anns = [(x, y, (l[i] * "\n", :bottom)) for (i,(x,y)) in nodepos if haskey(l, i)]
+        ylims --> (0, y2 + pad)
+        anns = [(x, y, (l[i] * "\n", fs, :bottom)) for (i,(x,y)) in nodepos if haskey(l, i)]
     elseif orientation == 3
         xforeground_color_axis --> :white
-        xlims --> (-maximum(y) - pad, 0)
+        xlims --> (-y2 - pad, 0)
         ylims --> (0, nleaves + 0.5)
         x, y = -y, x
-        anns = [(-y, x, (l[i] * " ", :right)) for (i,(x,y)) in nodepos if haskey(l, i)]
+        anns = [(-y, x, (l[i] * " ", fs, :right)) for (i,(x,y)) in nodepos if haskey(l, i)]
     elseif orientation == 4
         xforeground_color_axis --> :white
         xgrid --> false
         xlims --> (0.5, nleaves + 0.5)
-        ylims --> (-maximum(y) - pad, 0)
+        ylims --> (-y2 - pad, 0)
         x, y = x, -y
-        anns = [(x, -y, (l[i], :top)) for (i,(x,y)) in nodepos if haskey(l, i)]
+        anns = [(x, -y, (l[i], fs, :top)) for (i,(x,y)) in nodepos if haskey(l, i)]
+    end
+    if scalebar > 0
+        @series begin
+            color --> :black
+            linewidth --> 1
+            marker --> 3
+            if iseven(orientation) 
+                markershape --> :hline
+            else
+                markershape --> :vline
+            end
+            xs = collect(y2:-scalebar:y1-re) 
+            ys = repeat([0.5], length(xs))
+            if orientation == 3
+                xs = -xs
+            elseif orientation == 2
+                ys, xs = xs, ys
+            elseif orientation == 4
+                ys, xs = -xs, ys
+            end
+            xs, ys
+        end
     end
     @series begin
         annotations := anns
