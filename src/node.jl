@@ -416,3 +416,11 @@ function recursive_prune!(node)
         end
     end
 end
+
+relabel(tree, m) = relabel!(deepcopy(tree), m)
+function relabel!(tree, m::Dict{T,T}) where T<:AbstractString
+    for n in getleaves(tree)
+        n.data.name = m[name(n)]
+    end
+    return tree
+end

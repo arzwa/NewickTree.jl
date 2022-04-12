@@ -83,7 +83,6 @@ end
     else
         l = Dict(id(n)=>namefun(n) for n in getleaves(n))
     end
-    fontfamily --> "helvetica oblique"
     if orientation == 1
         yforeground_color_axis --> :white
         ylims --> (0.25, nleaves + 0.5)
@@ -133,6 +132,7 @@ end
     end
     @series begin
         annotations := anns
+        #fontfamily --> "helvetica oblique"
         x, y
     end
 end
