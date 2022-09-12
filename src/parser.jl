@@ -1,4 +1,4 @@
-# Parsing and I/O
+# Parsing and I/O -- parser is a bit of a hack
 """
 A string macro to read a newick string to a tree. Just to have the
 syntactic sugar enabling `nw"((A,B),C);"`

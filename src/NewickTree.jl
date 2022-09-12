@@ -11,7 +11,6 @@ export set_outgroup!, set_outgroup
 
 include("node.jl")
 include("parser.jl")
-include("nexus.jl")
 include("layout.jl")
 
 end # module

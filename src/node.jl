@@ -36,7 +36,7 @@ mutable struct Node{I,T}
     data    ::T
     parent  ::Node{I,T}
     children::Vector{Node{I,T}}
-
+    # constructors
     Node(id::I, data::T) where {I,T} = new{I,T}(id, data)
     Node(id::I, data::T, p::Nothing) where {I,T} = new{I,T}(id, data)
     function Node(id::I, data::T, p) where {I,T}
