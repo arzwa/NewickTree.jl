@@ -128,6 +128,10 @@ Base.show(io::IO, n::Node) = write(io,"Node($(id(n)), $(n.data))")
 
 # AbstractTrees interface
 AbstractTrees.children(n::Node) = isdefined(n, :children) ? n.children : typeof(n)[]
+AbstractTrees.nodevalue(n::Node) = n
+AbstractTrees.parent(n::Node) = parent(n)
+AbstractTrees.ParentLinks(::Type{<:Node}) = AbstractTrees.StoredParents()
+AbstractTrees.ChildIndexing(::Type{<:Node}) = AbstractTrees.IndexedChildren()
 Base.eltype(::Type{<:TreeIterator{Node{I,T}}}) where {I,T} = Node{I,T}
 AbstractTrees.nodetype(::Type{Node{I,T}}) where {I,T} = Node{I,T}
 

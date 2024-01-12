@@ -25,10 +25,10 @@ using NewickTree, AbstractTrees
     @testset "AbstractTrees interface" begin
         n = readnw(readline(joinpath(@__DIR__, "ncov-spike.nw")))
         @test Set(collect(Leaves(n))) == Set(getleaves(n))
-        t = Tree(n)
-        @test t[2][1] == n[2][1]
-        collect(PostOrderDFS(t)) .== postwalk(n)
-        collect(PreOrderDFS(t)) .== prewalk(n)
+        # t = Tree(n) # doesn't exist in AbstractTrees@0.4
+        # @test t[2][1] == n[2][1]
+        @test all(collect(PostOrderDFS(n)) .== postwalk(n))
+        @test all(collect(PreOrderDFS(n)) .== prewalk(n))
         # NOTE: the order doesn't have to be exactly the same, but
         # turns out it is.
     end
