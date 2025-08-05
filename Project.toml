@@ -1,14 +1,24 @@
 name = "NewickTree"
 uuid = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
-authors = ["arzwa <arzwa@psb.vib.ugent.be>"]
-version = "0.3.1"
+authors = ["arzwa <arzwa@psb.vib.ugent.be>", "Carlos Vigil-Vásquez <carlos.vigil.v@gmail.com>"]
+version = "0.4.0"
 
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[weakdeps]
+Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
+
+[extensions]
+ClusteringExt = ["Clustering"]
+
+[targets]
+test = ["Clustering"]
+
 [compat]
 AbstractTrees = "0.4"
+Clustering = "0.15.8"
 RecipesBase = "1.1.1"
-julia = "^1.4"
+julia = "^1.9"

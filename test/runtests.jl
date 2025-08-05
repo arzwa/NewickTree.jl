@@ -54,6 +54,22 @@ using NewickTree, AbstractTrees
         @test nwstr(t[1]) == "((1,2),3);"
         @test nwstr(t[2][1]) == "4;"
     end
+
+    if isdefined(Base, :get_extension)
+        try
+            using Clustering
+
+            A = [1 1 5 5; 1 1 5 5; 5 5 1 1; 5 5 1 1]
+            hc = hclust(A)
+
+            @testset "Converters to `Node`" begin
+                @test hasmethod(convert, (Type{NewickTree.Node},Clustering.Hclust))
+                @test nwstr(convert(Node, hclust(A))) == "((1:1.0,2:1.0):4.0,(3:1.0,4:1.0):4.0):0.0;"
+            end
+        catch
+            @warn "Clustering not available, skipping extension tests"
+        end
+    end
 end
 
 
