@@ -8,6 +8,7 @@ using NewickTree, AbstractTrees
         @test distance(n) === NaN
         @test distance(first(n)) == 1.
         @test name(last(n)) == "C"
+        @test support(first(n)) == 90
 
         n = readnw(readline(joinpath(@__DIR__, "ncov-spike.nw")))
         @test map(x->(name(x), distance(x)), getleaves(n))[3][2] == 0.182372964
