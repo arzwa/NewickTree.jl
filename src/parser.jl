@@ -103,13 +103,13 @@ end
 
 function get_nodedata(io::IOBuffer, c, name="")
     # get everything up to the next comma or )
-    support, c = _readwhile!(io, c)
+    _support, c = _readwhile!(io, c)
     distance = ""
     if c == ':'
         c = read(io, Char)
         distance, c = _readwhile!(io, c)
     end
-    sv = nanparse(support)
+    sv = nanparse(_support)
     if typeof(sv) == String
         name = String(strip(sv))
         sv = NaN
